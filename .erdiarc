@@ -1,0 +1,10 @@
+{
+  "output": "docs/erd",
+  "data-source-path": "src/database/data-source.ts",
+  "components": ["table", "er"],
+  "project-name": "app",
+  "format": "html",
+  "skip-image-in-html": true,
+  "theme": "dark",
+  "title": "Svels — схема базы данных"
+}

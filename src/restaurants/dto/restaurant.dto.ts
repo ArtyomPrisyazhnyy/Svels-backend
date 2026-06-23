@@ -1,0 +1,88 @@
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';
+
+export class RestaurantLocationDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  label?: string;
+
+  @IsString()
+  @MinLength(5)
+  address: string;
+}
+
+export class CreateRestaurantDto {
+  @IsString()
+  @MinLength(2)
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsString()
+  @MinLength(5)
+  address: string;
+}
+
+export class RegisterRestaurantDto {
+  @IsString()
+  @MinLength(2)
+  name: string;
+
+  @IsString()
+  @Matches(/^\d{9}$/, { message: 'УНП должен содержать 9 цифр' })
+  unp: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsBoolean()
+  isChain: boolean;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => RestaurantLocationDto)
+  locations: RestaurantLocationDto[];
+}
+
+export class UpdateRestaurantDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(5)
+  address?: string;
+}
+
+export class ReviewRegistrationDto {
+  @IsUuidV7()
+  requestId: string;
+
+  @IsString()
+  action: 'approve' | 'reject';
+
+  @IsOptional()
+  @IsString()
+  rejectionReason?: string;
+}

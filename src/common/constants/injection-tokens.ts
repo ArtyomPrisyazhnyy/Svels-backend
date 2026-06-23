@@ -1,0 +1,4 @@
+export const USERS_SERVICE = Symbol('USERS_SERVICE');
+export const RESTAURANTS_SERVICE = Symbol('RESTAURANTS_SERVICE');
+export const MENU_SERVICE = Symbol('MENU_SERVICE');
+export const FLOOR_PLANS_SERVICE = Symbol('FLOOR_PLANS_SERVICE');
