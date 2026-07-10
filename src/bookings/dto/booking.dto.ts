@@ -5,13 +5,16 @@ import {
   IsOptional,
   IsString,
   Matches,
+  Max,
   Min,
 } from 'class-validator';
-import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';import { BookingStatus } from '../../common/enums/booking-status.enum';
+import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';
+import { BookingStatus } from '../../common/enums/booking-status.enum';
 
 export class CreateBookingDto {
+  @IsOptional()
   @IsUuidV7()
-  tableId: string;
+  tableId?: string;
 
   @IsDateString()
   bookingDate: string;
@@ -22,6 +25,7 @@ export class CreateBookingDto {
 
   @IsInt()
   @Min(1)
+  @Max(50)
   guestCount: number;
 
   @IsOptional()

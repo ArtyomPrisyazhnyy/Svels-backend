@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryColumn,
@@ -11,12 +12,17 @@ import { UserRole } from '../../common/enums/user-role.enum';
 import { AuthProvider } from '../../common/enums/auth-provider.enum';
 
 @Entity('users')
+@Index(['email', 'restaurantId'], { unique: true })
+@Index(['phone', 'restaurantId'], { unique: true })
 export class User {
   @PrimaryColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
   email: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  phone: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   passwordHash: string | null;
@@ -33,7 +39,7 @@ export class User {
   @Column({ type: 'enum', enum: AuthProvider, default: AuthProvider.LOCAL })
   authProvider: AuthProvider;
 
-  @Column({ type: 'varchar', nullable: true, unique: true })
+  @Column({ type: 'varchar', nullable: true })
   googleId: string | null;
 
   @Column({ type: 'uuid', nullable: true })

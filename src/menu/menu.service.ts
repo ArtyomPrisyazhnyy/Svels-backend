@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
+import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { CreateMenuCategoryDto, CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu.dto';
 import { MenuCategory } from './entities/menu-category.entity';
@@ -25,6 +26,7 @@ export class MenuService {
     @InjectRepository(MenuItem)
     private readonly itemRepository: Repository<MenuItem>,
     private readonly cacheService: CacheService,
+    private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
   async getMenuByRestaurant(restaurantId: string): Promise<MenuWithCategories> {
@@ -77,12 +79,14 @@ export class MenuService {
       restaurantId,
       categoryId: dto.categoryId,
       name: sanitizeText(dto.name),
+      variantLabel: dto.variantLabel ? sanitizeText(dto.variantLabel) : null,
       description: dto.description ? sanitizeText(dto.description) : null,
       ingredients: dto.ingredients ? sanitizeText(dto.ingredients) : null,
       nutrition: normalizeNutrition(dto.nutrition),
       price: dto.price,
       isAvailable: dto.isAvailable ?? true,
       imageUrl: dto.imageUrl,
+      galleryUrls: dto.galleryUrls ?? [],
       modifierGroups: normalizeModifierGroups(dto.modifierGroups),
     });
 
@@ -109,6 +113,9 @@ export class MenuService {
       item.categoryId = dto.categoryId;
     }
     if (dto.name) item.name = sanitizeText(dto.name);
+    if (dto.variantLabel !== undefined) {
+      item.variantLabel = dto.variantLabel ? sanitizeText(dto.variantLabel) : null;
+    }
     if (dto.description !== undefined) {
       item.description = dto.description ? sanitizeText(dto.description) : null;
     }
@@ -121,6 +128,7 @@ export class MenuService {
     if (dto.price !== undefined) item.price = dto.price;
     if (dto.isAvailable !== undefined) item.isAvailable = dto.isAvailable;
     if (dto.imageUrl !== undefined) item.imageUrl = dto.imageUrl;
+    if (dto.galleryUrls !== undefined) item.galleryUrls = dto.galleryUrls;
     if (dto.modifierGroups !== undefined) {
       item.modifierGroups = normalizeModifierGroups(dto.modifierGroups);
     }
@@ -153,5 +161,6 @@ export class MenuService {
 
   private async invalidateCache(restaurantId: string): Promise<void> {
     await this.cacheService.del(CacheKeys.menu(restaurantId));
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
   }
 }

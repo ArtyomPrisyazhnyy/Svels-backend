@@ -1,7 +1,9 @@
 import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UsersService } from './users.service';
@@ -22,5 +24,14 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     return this.usersService.updateProfile(user.id, dto.firstName, dto.lastName);
+  }
+
+  @Patch('me/password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<UserResponseDto> {
+    return this.usersService.updatePassword(user.id, dto.password);
   }
 }

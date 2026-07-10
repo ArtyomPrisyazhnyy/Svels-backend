@@ -32,6 +32,12 @@ export class Restaurant {
   @Column({ type: 'uuid' })
   ownerId: string;
 
+  @Column({ type: 'varchar', length: 253, nullable: true, unique: true })
+  customDomain: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  logoUrl: string | null;
+
   @ManyToOne('User', { createForeignKeyConstraints: false })
   @JoinColumn({ name: 'ownerId' })
   owner?: unknown;

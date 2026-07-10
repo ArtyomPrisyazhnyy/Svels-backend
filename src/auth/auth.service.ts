@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -9,9 +9,15 @@ import { UserCreatedEvent } from '../users/events/user-created.event';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
+import { GuestLoginDto, GuestRegisterDto } from './dto/guest-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { GoogleTokenService } from './google-token.service';
+import {
+  InvalidPhoneError,
+  isValidPhone,
+  normalizePhone,
+} from '../common/utils/normalize-phone.util';
 
 @Injectable()
 export class AuthService {
@@ -36,7 +42,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
-    const user = await this.usersService.findByEmail(dto.email);
+    const user = await this.usersService.findPlatformUserByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException('Неверный email или пароль');
     }
@@ -48,6 +54,48 @@ export class AuthService {
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isValid) {
       throw new UnauthorizedException('Неверный email или пароль');
+    }
+
+    const profile = await this.usersService.findById(user.id);
+    if (!profile) {
+      throw new UnauthorizedException('Пользователь не найден');
+    }
+
+    return this.buildAuthResponse(profile);
+  }
+
+  async registerGuest(restaurantId: string, dto: GuestRegisterDto): Promise<AuthResponseDto> {
+    const phone = this.parseGuestPhone(dto.phone);
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const user = await this.usersService.createGuest(
+      {
+        phone,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      },
+      passwordHash,
+      restaurantId,
+    );
+
+    this.eventEmitter.emit('user.created', new UserCreatedEvent(user.id, user.email));
+
+    return this.buildAuthResponse(user);
+  }
+
+  async loginGuest(restaurantId: string, dto: GuestLoginDto): Promise<AuthResponseDto> {
+    const phone = this.parseGuestPhone(dto.phone);
+    const user = await this.usersService.findGuestByPhoneAndRestaurant(phone, restaurantId);
+    if (!user) {
+      throw new UnauthorizedException('Неверный номер телефона или пароль');
+    }
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Для этого аккаунта вход по паролю недоступен');
+    }
+
+    const isValid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Неверный номер телефона или пароль');
     }
 
     const profile = await this.usersService.findById(user.id);
@@ -71,7 +119,16 @@ export class AuthService {
   }
 
   private buildAuthResponse(user: UserResponseDto): AuthResponseDto {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload: { sub: string; email: string; role: string; restaurantId?: string } = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    if (user.restaurantId) {
+      payload.restaurantId = user.restaurantId;
+    }
+
     const accessToken = this.jwtService.sign(payload);
 
     const authUser: AuthResponseDto['user'] = {
@@ -87,6 +144,22 @@ export class AuthService {
       authUser.restaurantId = user.restaurantId;
     }
 
+    if (user.phone) {
+      authUser.phone = user.phone;
+    }
+
     return { accessToken, user: authUser };
+  }
+
+  private parseGuestPhone(raw: string): string {
+    try {
+      const phone = normalizePhone(raw);
+      if (!isValidPhone(phone)) {
+        throw new InvalidPhoneError();
+      }
+      return phone;
+    } catch {
+      throw new BadRequestException('Некорректный номер телефона');
+    }
   }
 }

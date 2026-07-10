@@ -1,12 +1,16 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CacheKeys } from '../cache/cache-keys';
+import { CacheService } from '../cache/cache.service';
 import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
+import { isValidDomain, normalizeDomain } from '../common/utils/normalize-domain.util';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import {
   CreateRestaurantDto,
@@ -15,9 +19,13 @@ import {
   UpdateRestaurantDto,
 } from './dto/restaurant.dto';
 import { RestaurantResponseDto } from './dto/restaurant-response.dto';
+import { ResolveDomainResponseDto } from './dto/resolve-domain.dto';
 import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantRegistrationRequest } from './entities/restaurant-registration-request.entity';
 import { RestaurantApprovedEvent } from './events/restaurant-approved.event';
+import { RestaurantRegistrationReviewedEvent } from './events/restaurant-registration-reviewed.event';
+import { RestaurantRegistrationSubmittedEvent } from './events/restaurant-registration-submitted.event';
+import { PendingRegistrationDto } from '../shared/dto/pending-registration.dto';
 
 @Injectable()
 export class RestaurantsService {
@@ -27,6 +35,7 @@ export class RestaurantsService {
     @InjectRepository(RestaurantRegistrationRequest)
     private readonly registrationRepository: Repository<RestaurantRegistrationRequest>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly cacheService: CacheService,
   ) {}
 
   async register(dto: RegisterRestaurantDto, applicantId: string): Promise<RestaurantRegistrationRequest> {
@@ -46,7 +55,14 @@ export class RestaurantsService {
       status: RestaurantStatus.PENDING,
     });
 
-    return this.registrationRepository.save(request);
+    const saved = await this.registrationRepository.save(request);
+
+    this.eventEmitter.emit(
+      'restaurant.registration.submitted',
+      new RestaurantRegistrationSubmittedEvent(this.toRegistrationPayload(saved)),
+    );
+
+    return saved;
   }
 
   async findAll(): Promise<RestaurantResponseDto[]> {
@@ -56,11 +72,61 @@ export class RestaurantsService {
     return restaurants.map((r) => this.toResponse(r));
   }
 
+  async resolveByDomain(rawHost: string): Promise<ResolveDomainResponseDto> {
+    let domain: string;
+
+    try {
+      domain = normalizeDomain(rawHost);
+    } catch {
+      throw new BadRequestException('Некорректный домен');
+    }
+
+    if (!isValidDomain(domain)) {
+      throw new BadRequestException('Некорректный домен');
+    }
+
+    const cacheKey = CacheKeys.restaurantByDomain(domain);
+    const cached = await this.cacheService.get<ResolveDomainResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { customDomain: domain, status: RestaurantStatus.APPROVED },
+    });
+
+    if (!restaurant) {
+      throw new NotFoundException('Заведение для этого домена не найдено');
+    }
+
+    const response: ResolveDomainResponseDto = {
+      id: restaurant.id,
+      name: restaurant.name,
+      customDomain: domain,
+    };
+
+    await this.cacheService.set(cacheKey, response);
+    return response;
+  }
+
   async findById(id: string): Promise<RestaurantResponseDto> {
     const restaurant = await this.restaurantRepository.findOne({ where: { id } });
     if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
+    return this.toResponse(restaurant);
+  }
+
+  async ensureApproved(id: string): Promise<RestaurantResponseDto> {
+    const restaurant = await this.restaurantRepository.findOne({ where: { id } });
+    if (!restaurant) {
+      throw new NotFoundException('Ресторан не найден');
+    }
+
+    if (restaurant.status !== RestaurantStatus.APPROVED) {
+      throw new BadRequestException('Заведение недоступно для регистрации гостей');
+    }
+
     return this.toResponse(restaurant);
   }
 
@@ -76,15 +142,32 @@ export class RestaurantsService {
     }
     if (dto.address) restaurant.address = sanitizeText(dto.address);
 
+    if (dto.customDomain !== undefined) {
+      const previousDomain = restaurant.customDomain;
+      const nextDomain = await this.resolveCustomDomainUpdate(id, dto.customDomain);
+      restaurant.customDomain = nextDomain;
+      await this.invalidateDomainCache(previousDomain, nextDomain);
+    }
+
+    if (dto.logoUrl !== undefined) {
+      restaurant.logoUrl = dto.logoUrl;
+    }
+
     const saved = await this.restaurantRepository.save(restaurant);
     return this.toResponse(saved);
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.restaurantRepository.delete({ id });
-    if (!result.affected) {
+    const restaurant = await this.restaurantRepository.findOne({ where: { id } });
+    if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
+
+    if (restaurant.customDomain) {
+      await this.cacheService.del(CacheKeys.restaurantByDomain(restaurant.customDomain));
+    }
+
+    await this.restaurantRepository.delete({ id });
   }
 
   async findRegistrationByApplicant(
@@ -139,7 +222,14 @@ export class RestaurantsService {
       request.rejectionReason = dto.rejectionReason
         ? sanitizeText(dto.rejectionReason)
         : null;
-      return this.registrationRepository.save(request);
+      const saved = await this.registrationRepository.save(request);
+
+      this.eventEmitter.emit(
+        'restaurant.registration.reviewed',
+        new RestaurantRegistrationReviewedEvent(saved.id),
+      );
+
+      return saved;
     }
 
     const locations = request.locations?.length
@@ -178,6 +268,11 @@ export class RestaurantsService {
       new RestaurantApprovedEvent(saved.id, saved.ownerId),
     );
 
+    this.eventEmitter.emit(
+      'restaurant.registration.reviewed',
+      new RestaurantRegistrationReviewedEvent(request.id),
+    );
+
     return this.toResponse(saved);
   }
 
@@ -203,7 +298,70 @@ export class RestaurantsService {
       address: restaurant.address,
       status: restaurant.status,
       ownerId: restaurant.ownerId,
+      customDomain: restaurant.customDomain,
+      logoUrl: restaurant.logoUrl,
       createdAt: restaurant.createdAt,
+    };
+  }
+
+  private async resolveCustomDomainUpdate(
+    restaurantId: string,
+    rawDomain: string | null,
+  ): Promise<string | null> {
+    if (rawDomain === null || rawDomain === '') {
+      return null;
+    }
+
+    let domain: string;
+
+    try {
+      domain = normalizeDomain(rawDomain);
+    } catch {
+      throw new BadRequestException('Некорректный домен');
+    }
+
+    if (!isValidDomain(domain)) {
+      throw new BadRequestException('Некорректный домен');
+    }
+
+    const existing = await this.restaurantRepository.findOne({
+      where: { customDomain: domain },
+    });
+
+    if (existing && existing.id !== restaurantId) {
+      throw new ConflictException('Домен уже привязан к другому заведению');
+    }
+
+    return domain;
+  }
+
+  private async invalidateDomainCache(
+    previousDomain: string | null,
+    nextDomain: string | null,
+  ): Promise<void> {
+    if (previousDomain) {
+      await this.cacheService.del(CacheKeys.restaurantByDomain(previousDomain));
+    }
+
+    if (nextDomain && nextDomain !== previousDomain) {
+      await this.cacheService.del(CacheKeys.restaurantByDomain(nextDomain));
+    }
+  }
+
+  private toRegistrationPayload(
+    request: RestaurantRegistrationRequest,
+  ): PendingRegistrationDto {
+    return {
+      id: request.id,
+      name: request.name,
+      description: request.description,
+      address: request.address,
+      unp: request.unp,
+      isChain: request.isChain,
+      locations: request.locations,
+      applicantId: request.applicantId,
+      status: request.status,
+      createdAt: request.createdAt,
     };
   }
 }

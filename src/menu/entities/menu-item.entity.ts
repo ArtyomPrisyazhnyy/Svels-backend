@@ -34,6 +34,9 @@ export class MenuItem {
   @Column()
   name: string;
 
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  variantLabel: string | null;
+
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
@@ -51,6 +54,13 @@ export class MenuItem {
 
   @Column()
   imageUrl: string;
+
+  /**
+   * Дополнительные фотографии позиции (галерея в модальном окне товара).
+   * Обложкой (карточкой в меню) остаётся imageUrl. Максимум 9 — итого до 10 фото.
+   */
+  @Column({ type: 'jsonb', default: [] })
+  galleryUrls: string[];
 
   @Column({ type: 'jsonb', default: [] })
   modifierGroups: MenuModifierGroup[];

@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryColumn,
@@ -10,6 +11,9 @@ import {
 import { BookingStatus } from '../../common/enums/booking-status.enum';
 
 @Entity('bookings')
+@Index('idx_bookings_restaurant_date', ['restaurantId', 'bookingDate'])
+@Index('idx_bookings_table', ['tableId'])
+@Index('idx_bookings_user', ['userId'])
 export class Booking {
   @PrimaryColumn('uuid')
   id: string;
@@ -21,8 +25,8 @@ export class Booking {
   @JoinColumn({ name: 'restaurantId' })
   restaurant?: unknown;
 
-  @Column({ type: 'uuid' })
-  tableId: string;
+  @Column({ type: 'uuid', nullable: true })
+  tableId: string | null;
 
   @ManyToOne('Table', { createForeignKeyConstraints: false })
   @JoinColumn({ name: 'tableId' })
@@ -41,8 +45,26 @@ export class Booking {
   @Column({ type: 'time' })
   bookingTime: string;
 
+  /**
+   * Нормализованное начало слота (timestamptz). Вместе с `slotEnd` образует
+   * окно занятости стола, проверяемое через EXCLUDE gist-индекс против пересечений.
+   */
+  @Column({ type: 'timestamptz' })
+  slotStart: Date;
+
+  @Column({ type: 'timestamptz' })
+  slotEnd: Date;
+
   @Column({ type: 'int' })
   guestCount: number;
+
+  /** Снимок суммы депозита BYN на момент создания брони (иммутабелен). */
+  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  depositAmount: number;
+
+  /** Optimistic concurrency version (дополнение к пессимистической блокировке). */
+  @Column({ type: 'int', default: 0 })
+  version: number;
 
   @Column({ type: 'enum', enum: BookingStatus, default: BookingStatus.PENDING })
   status: BookingStatus;

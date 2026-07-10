@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -7,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -93,6 +95,11 @@ export class CreateMenuItemDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(80)
+  variantLabel?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -118,6 +125,12 @@ export class CreateMenuItemDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(9)
+  @IsString({ each: true })
+  galleryUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => MenuModifierGroupDto)
   modifierGroups?: MenuModifierGroupDto[];
@@ -132,6 +145,11 @@ export class UpdateMenuItemDto {
   @IsString()
   @MinLength(1)
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  variantLabel?: string | null;
 
   @IsOptional()
   @IsString()
@@ -159,6 +177,12 @@ export class UpdateMenuItemDto {
   @IsString()
   @MinLength(1)
   imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(9)
+  @IsString({ each: true })
+  galleryUrls?: string[];
 
   @IsOptional()
   @IsArray()

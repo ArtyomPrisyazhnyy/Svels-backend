@@ -20,7 +20,11 @@ async function bootstrap() {
   await app.register(helmet, {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   await app.register(multipart, {
     limits: { fileSize: 5 * 1024 * 1024 },
   });

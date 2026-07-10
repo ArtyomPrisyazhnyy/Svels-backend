@@ -85,6 +85,67 @@ export class CacheService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Атомарное удаление нескольких ключей через pipeline (правило data-transactions:
+   * multi-key операции должны идти одним pipeline-батчем, а не N round-trip'ами).
+   * Молча no-op в degraded-режиме.
+   */
+  async delMany(keys: string[]): Promise<void> {
+    if (!this.isUsable() || keys.length === 0) {
+      return;
+    }
+
+    try {
+      const pipeline = this.client!.pipeline();
+      for (const key of keys) {
+        pipeline.del(key);
+      }
+      await pipeline.exec();
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+    }
+  }
+
+  /**
+   * Redis-лок через SET NX EX (правило data-transactions / conn-pooling).
+   * Возвращает токен, если лок захвачен, либо null, если ключ уже занят.
+   * Best-effort: при недоступности Redis возвращает токен fallback
+   * (реальная race-protection остаётся на SERIALIZABLE-транзакции БД).
+   */
+  async tryLock(key: string, ttlSeconds: number): Promise<string | null> {
+    if (!this.isUsable()) {
+      return `fallback-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    const token = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    try {
+      const result = await this.client!.set(key, token, 'EX', ttlSeconds, 'NX');
+      return result === 'OK' ? token : null;
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+      return `fallback-${token}`;
+    }
+  }
+
+  /**
+   * Снятие лока с проверкой ownership (GET + DEL только если значение совпадает).
+   * Гарантирует что мы не снимем чужой лок, истекший и перехваченный другим процессом.
+   */
+  async unlock(key: string, token: string): Promise<void> {
+    if (!this.isUsable() || token.startsWith('fallback-')) {
+      return;
+    }
+
+    try {
+      const current = await this.client!.get(key);
+      if (current === token) {
+        await this.client!.del(key);
+      }
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+    }
+  }
+
   async delByPattern(pattern: string): Promise<void> {
     if (!this.isUsable()) {
       return;

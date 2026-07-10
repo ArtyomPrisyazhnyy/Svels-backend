@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
@@ -18,9 +19,41 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 @Controller()
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
+
+  @Get('restaurants/:restaurantId/bookings/availability')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  getAvailability(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @Query('date') date: string,
+  ) {
+    if (!DATE_RE.test(date)) {
+      return { enabled: false, mode: 'specific_table', slotMinutes: 30, bookingDurationMinutes: 120, date, slots: [] };
+    }
+    return this.bookingsService.getAvailability(restaurantId, date);
+  }
+
+  /**
+   * Занятость столов на конкретный слот — для guest-виджета планировки.
+   * Возвращает список { tableId, busyUntil } для столов, занятых в окне брони.
+   */
+  @Get('restaurants/:restaurantId/tables/availability')
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
+  getTablesAvailability(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @Query('date') date: string,
+    @Query('time') time: string,
+  ) {
+    if (!DATE_RE.test(date) || !TIME_RE.test(time)) {
+      return { date, time, durationMinutes: 120, busy: [] };
+    }
+    return this.bookingsService.getTablesAvailability(restaurantId, date, time);
+  }
 
   @Post('restaurants/:restaurantId/bookings')
   @UseGuards(JwtAuthGuard)

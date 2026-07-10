@@ -7,6 +7,7 @@ import {
   IsString,
   Matches,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';
@@ -73,6 +74,19 @@ export class UpdateRestaurantDto {
   @IsString()
   @MinLength(5)
   address?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @Matches(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i, {
+    message: 'Некорректный домен',
+  })
+  customDomain?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  logoUrl?: string | null;
 }
 
 export class ReviewRegistrationDto {

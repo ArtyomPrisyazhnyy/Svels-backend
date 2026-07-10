@@ -12,11 +12,11 @@ export class RestaurantAccessGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<{
       user: AuthenticatedUser;
-      params: { restaurantId?: string };
+      params: { restaurantId?: string; id?: string };
     }>();
 
     const user = request.user;
-    const restaurantId = request.params.restaurantId;
+    const restaurantId = request.params.restaurantId ?? request.params.id;
 
     if (!restaurantId) {
       throw new ForbiddenException('Ресторан не указан');

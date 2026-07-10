@@ -7,5 +7,7 @@ export class RestaurantResponseDto {
   address: string;
   status: RestaurantStatus;
   ownerId: string;
+  customDomain: string | null;
+  logoUrl: string | null;
   createdAt: Date;
 }
