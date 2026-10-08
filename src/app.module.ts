@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import appConfig from './config/app.config';
 import { validateEnv } from './config/env.validation';
+import { isDevOrTestNodeEnv } from './config/is-dev-or-test-env';
 import databaseConfig from './config/database.config';
 import googleConfig from './config/google.config';
 import jwtConfig from './config/jwt.config';
@@ -43,9 +44,7 @@ import { NextRevalidationModule } from './next-revalidation/next-revalidation.mo
 import { DevModule } from './dev/dev.module';
 import { HealthModule } from './health/health.module';
 
-const isDevOrTest = ['development', 'test'].includes(
-  process.env.NODE_ENV ?? 'development',
-);
+const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
 
 @Module({
   imports: [
@@ -101,7 +100,7 @@ const isDevOrTest = ['development', 'test'].includes(
     PaymentsModule,
     FavoritesModule,
     LeadsModule,
-    ...(isDevOrTest ? [DevModule] : []),
+    ...(includeDevModule ? [DevModule] : []),
   ],
   providers: [
     {

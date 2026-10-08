@@ -30,14 +30,25 @@ Backend API Svels (NestJS 11, Fastify, TypeORM, PostgreSQL, Redis).
 ```bash
 npm install
 docker compose -f docker-compose.dev.yml up -d   # Postgres 16 + Redis 7
-cp .env.example .env
-npm run migration:run
-npm run start:dev
+cp .env.example .env   # NODE_ENV=development обязателен для DevModule и локального режима
+npm run migration:run  # новая пустая БД
+npm run start:dev      # задаёт NODE_ENV=development
 ```
 
 Проверка: `GET http://localhost:3000/health` → `{"status":"ok","db":"up","redis":"up"}` (или `redis: "disabled"` при `REDIS_ENABLED=false`).
 
 Схема БД в production — только через миграции (`npm run migration:run`). `DB_SYNC=true` — только для осознанной локальной синхронизации.
+
+### Уже существующая dev-база (synchronize / Neon)
+
+Если схема уже создана через `DB_SYNC=true` или старый `synchronize`, **не** запускайте `migration:run` на baseline (таблицы уже есть). Вместо этого:
+
+1. Убедитесь, что схема совпадает с текущими entity (при необходимости один раз `DB_SYNC=true` или ручное выравнивание).
+2. `npm run migration:mark-baseline` — проверка через `createSchemaBuilder().log()`; при расхождениях скрипт выведет SQL и завершится с ошибкой.
+3. `npm run migration:show` — baseline `[X]` применён.
+4. Дальнейшие изменения — только новыми миграциями (`migration:generate` / `migration:run`).
+
+`DevModule` (/dev/last-otp) подключается **только** при явном `NODE_ENV=development` или `NODE_ENV=test`. Если `NODE_ENV` не задан на сервере, dev-эндпоинты не регистрируются (fail-closed).
 
 Подробнее для агентов и контрибьюторов: [AGENTS.md](./AGENTS.md).
 
