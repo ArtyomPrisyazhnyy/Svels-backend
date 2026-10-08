@@ -24,6 +24,8 @@ export default new DataSource({
     connectionTimeoutMillis: 20_000,
   },
   entities: ['src/**/*.entity.ts'],
+  migrations: ['src/database/migrations/*.ts'],
   subscribers: [UuidV7Subscriber],
   synchronize: false,
+  migrationsRun: false,
 });

@@ -4,6 +4,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import appConfig from './config/app.config';
+import { validateEnv } from './config/env.validation';
+import { isDevOrTestNodeEnv } from './config/is-dev-or-test-env';
 import databaseConfig from './config/database.config';
 import googleConfig from './config/google.config';
 import jwtConfig from './config/jwt.config';
@@ -40,11 +42,15 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { LeadsModule } from './leads/leads.module';
 import { NextRevalidationModule } from './next-revalidation/next-revalidation.module';
 import { DevModule } from './dev/dev.module';
+import { HealthModule } from './health/health.module';
+
+const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
       load: [
         appConfig,
         databaseConfig,
@@ -66,6 +72,7 @@ import { DevModule } from './dev/dev.module';
     ]),
     EventEmitterModule.forRoot(),
     DatabaseModule,
+    HealthModule,
     AppCacheModule,
     StorageModule,
     MediaModule.forRoot({
@@ -93,7 +100,7 @@ import { DevModule } from './dev/dev.module';
     PaymentsModule,
     FavoritesModule,
     LeadsModule,
-    DevModule,
+    ...(includeDevModule ? [DevModule] : []),
   ],
   providers: [
     {

@@ -6,15 +6,33 @@ import {
   timingSafeEqual,
 } from 'crypto';
 
+let devFallbackKeyWarned = false;
+
 /**
  * AES-256-GCM для секретов мерчантов (bePaid secret key и т.п.).
- * Ключ: BEPAY_CREDENTIALS_ENCRYPTION_KEY или JWT_SECRET (dev fallback).
+ * Ключ: BEPAY_CREDENTIALS_ENCRYPTION_KEY (prod) или JWT_SECRET (dev fallback).
  */
 function resolveMasterKey(): Buffer {
-  const raw =
-    process.env.BEPAY_CREDENTIALS_ENCRYPTION_KEY?.trim() ||
-    process.env.JWT_SECRET?.trim() ||
-    'dev-insecure-bepaid-credentials-key';
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const encryptionKey = process.env.BEPAY_CREDENTIALS_ENCRYPTION_KEY?.trim();
+  if (encryptionKey) {
+    return createHash('sha256').update(encryptionKey, 'utf8').digest();
+  }
+
+  if (nodeEnv === 'production') {
+    throw new Error(
+      'BEPAY_CREDENTIALS_ENCRYPTION_KEY is required in production',
+    );
+  }
+
+  const jwtSecret = process.env.JWT_SECRET?.trim();
+  const raw = jwtSecret || 'dev-insecure-bepaid-credentials-key';
+  if (!devFallbackKeyWarned) {
+    devFallbackKeyWarned = true;
+    console.warn(
+      '[secret-crypto] BEPAY_CREDENTIALS_ENCRYPTION_KEY is not set; using JWT_SECRET or dev fallback key',
+    );
+  }
   return createHash('sha256').update(raw, 'utf8').digest();
 }
 
