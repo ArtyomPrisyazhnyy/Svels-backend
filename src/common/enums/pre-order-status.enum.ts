@@ -1,6 +1,8 @@
 export enum PreOrderStatus {
-  PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  PAID = 'paid',
+  NEW = 'new',
+  ACCEPTED = 'accepted',
+  PREPARING = 'preparing',
+  READY = 'ready',
+  COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }

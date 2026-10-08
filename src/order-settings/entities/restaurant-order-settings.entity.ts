@@ -38,6 +38,9 @@ export class RestaurantOrderSettings {
   @Column({ default: false })
   deliveryForSomeoneElse: boolean;
 
+  @Column({ default: false })
+  ordersPaused: boolean;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }
