@@ -42,6 +42,7 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { LeadsModule } from './leads/leads.module';
 import { NextRevalidationModule } from './next-revalidation/next-revalidation.module';
 import { DevModule } from './dev/dev.module';
+import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
 import { HealthModule } from './health/health.module';
 
 const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
@@ -101,6 +102,7 @@ const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
     FavoritesModule,
     LeadsModule,
     ...(includeDevModule ? [DevModule] : []),
+    TelegramBotModule,
   ],
   providers: [
     {

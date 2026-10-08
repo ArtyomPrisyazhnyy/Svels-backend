@@ -5,7 +5,10 @@ import { RestaurantPermission } from '../common/enums/restaurant-permission.enum
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { UpdateOrderSettingsDto } from './dto/order-settings.dto';
+import {
+  PauseOrderSettingsDto,
+  UpdateOrderSettingsDto,
+} from './dto/order-settings.dto';
 import { OrderSettingsService } from './order-settings.service';
 
 @Controller('restaurants/:restaurantId/order-settings')
@@ -15,6 +18,19 @@ export class OrderSettingsController {
   @Get()
   getSettings(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
     return this.orderSettingsService.getByRestaurant(restaurantId);
+  }
+
+  @Patch('pause')
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.VIEW_ORDERS)
+  updatePause(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @Body() dto: PauseOrderSettingsDto,
+  ) {
+    return this.orderSettingsService.updatePause(
+      restaurantId,
+      dto.ordersPaused,
+    );
   }
 
   @Patch()

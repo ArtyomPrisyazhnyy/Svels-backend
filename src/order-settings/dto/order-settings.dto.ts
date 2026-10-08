@@ -30,6 +30,11 @@ export class UpdateOrderSettingsDto {
   deliveryForSomeoneElse?: boolean;
 }
 
+export class PauseOrderSettingsDto {
+  @IsBoolean()
+  ordersPaused: boolean;
+}
+
 export class OrderSettingsResponseDto {
   restaurantId: string;
   fulfillmentDelivery: boolean;
@@ -39,5 +44,6 @@ export class OrderSettingsResponseDto {
   paymentCardOnSite: boolean;
   paymentOnline: boolean;
   deliveryForSomeoneElse: boolean;
+  ordersPaused: boolean;
   updatedAt: Date;
 }

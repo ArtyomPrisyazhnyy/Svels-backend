@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryColumn,
 } from 'typeorm';
+import type { PreOrderItemModifierSnapshot } from '../types/pre-order-item-modifier.types';
 
 @Entity('pre_order_items')
 export class PreOrderItem {
@@ -34,6 +35,9 @@ export class PreOrderItem {
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   unitPrice: number;
+
+  @Column({ type: 'jsonb', default: [] })
+  modifiers: PreOrderItemModifierSnapshot[];
 
   @CreateDateColumn()
   createdAt: Date;

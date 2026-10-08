@@ -23,6 +23,19 @@ export class OrderSettingsService {
     return this.toResponse(settings);
   }
 
+  async updatePause(
+    restaurantId: string,
+    ordersPaused: boolean,
+  ): Promise<OrderSettingsResponseDto> {
+    const settings = await this.findOrCreate(restaurantId);
+    settings.ordersPaused = ordersPaused;
+    const saved = await this.settingsRepository.save(settings);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
+    return this.toResponse(saved);
+  }
+
   async update(
     restaurantId: string,
     dto: UpdateOrderSettingsDto,
@@ -109,6 +122,7 @@ export class OrderSettingsService {
       paymentCardOnSite: settings.paymentCardOnSite,
       paymentOnline: settings.paymentOnline,
       deliveryForSomeoneElse: settings.deliveryForSomeoneElse,
+      ordersPaused: settings.ordersPaused,
       updatedAt: settings.updatedAt,
     };
   }

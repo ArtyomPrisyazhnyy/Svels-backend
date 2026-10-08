@@ -8,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaymentStatus } from '../common/enums/payment-status.enum';
-import { PreOrderStatus } from '../common/enums/pre-order-status.enum';
+import { OrderPaymentStatus } from '../common/enums/order-payment-status.enum';
 import { generateUuidV7 } from '../common/utils/uuid.util';
 import type { RestaurantBePaidCredentials } from '../payment-settings/dto/payment-settings.dto';
 import { PaymentSettingsService } from '../payment-settings/payment-settings.service';
@@ -260,7 +260,7 @@ export class PaymentsService {
     await this.paymentRepository.save(payment);
     await this.preOrderRepository.update(
       { id: payment.preOrderId },
-      { status: PreOrderStatus.CANCELLED },
+      { paymentStatus: OrderPaymentStatus.VOIDED },
     );
 
     return this.toResponse(payment);
@@ -302,7 +302,7 @@ export class PaymentsService {
     await this.paymentRepository.save(payment);
     await this.preOrderRepository.update(
       { id: payment.preOrderId },
-      { status: PreOrderStatus.PAID },
+      { paymentStatus: OrderPaymentStatus.PAID },
     );
 
     return this.toResponse(payment);
@@ -370,13 +370,13 @@ export class PaymentsService {
       return;
     }
 
-    let payment =
-      (trackingId
-        ? await this.paymentRepository.findOne({ where: { trackingId } })
-        : null) ??
-      (uid
-        ? await this.paymentRepository.findOne({ where: { bepaidUid: uid } })
-        : null);
+    const paymentByTracking = trackingId
+      ? await this.paymentRepository.findOne({ where: { trackingId } })
+      : null;
+    const paymentByUid = uid
+      ? await this.paymentRepository.findOne({ where: { bepaidUid: uid } })
+      : null;
+    const payment = paymentByTracking ?? paymentByUid;
 
     if (!payment) {
       this.logger.warn(
@@ -406,8 +406,16 @@ export class PaymentsService {
       return;
     }
 
-    const status = String(transaction.status ?? '');
-    const type = String(transaction.type ?? payment.transactionType ?? '');
+    const status =
+      typeof transaction.status === 'string' ||
+      typeof transaction.status === 'number'
+        ? String(transaction.status)
+        : '';
+    const type =
+      typeof transaction.type === 'string' ||
+      typeof transaction.type === 'number'
+        ? String(transaction.type)
+        : String(payment.transactionType ?? '');
     payment.bepaidUid = uid ?? payment.bepaidUid;
     payment.lastMessage =
       typeof transaction.message === 'string'
@@ -426,7 +434,7 @@ export class PaymentsService {
         await this.paymentRepository.save(payment);
         await this.preOrderRepository.update(
           { id: payment.preOrderId },
-          { status: PreOrderStatus.CONFIRMED },
+          { paymentStatus: OrderPaymentStatus.AUTHORIZED },
         );
 
         const credentials = credentialsHint?.secretKey
@@ -454,7 +462,7 @@ export class PaymentsService {
         await this.paymentRepository.save(payment);
         await this.preOrderRepository.update(
           { id: payment.preOrderId },
-          { status: PreOrderStatus.PAID },
+          { paymentStatus: OrderPaymentStatus.PAID },
         );
         return;
       }
@@ -464,7 +472,7 @@ export class PaymentsService {
         await this.paymentRepository.save(payment);
         await this.preOrderRepository.update(
           { id: payment.preOrderId },
-          { status: PreOrderStatus.CANCELLED },
+          { paymentStatus: OrderPaymentStatus.VOIDED },
         );
         return;
       }
@@ -473,6 +481,10 @@ export class PaymentsService {
     if (status === 'failed' || status === 'error' || status === 'incomplete') {
       payment.status = PaymentStatus.FAILED;
       await this.paymentRepository.save(payment);
+      await this.preOrderRepository.update(
+        { id: payment.preOrderId },
+        { paymentStatus: OrderPaymentStatus.FAILED },
+      );
       return;
     }
 
