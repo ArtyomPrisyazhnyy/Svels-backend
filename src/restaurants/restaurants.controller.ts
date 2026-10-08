@@ -12,17 +12,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
-import { mkdir, writeFile } from 'fs/promises';
-import { extname, join } from 'path';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles, StaffRoles } from '../common/decorators/roles.decorator';
+import { RestaurantPermission } from '../common/enums/restaurant-permission.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { generateUuidV7 } from '../common/utils/uuid.util';
+import { MediaUploadService } from '../media/media-upload.service';
 import {
   RegisterRestaurantDto,
   ReviewRegistrationDto,
@@ -31,11 +30,12 @@ import {
 import { ResolveDomainQueryDto } from './dto/resolve-domain.dto';
 import { RestaurantsService } from './restaurants.service';
 
-const ALLOWED_LOGO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
 @Controller('restaurants')
 export class RestaurantsController {
-  constructor(private readonly restaurantsService: RestaurantsService) {}
+  constructor(
+    private readonly restaurantsService: RestaurantsService,
+    private readonly mediaUploadService: MediaUploadService,
+  ) {}
 
   @Get()
   findAll() {
@@ -83,7 +83,7 @@ export class RestaurantsController {
 
   @Post(':restaurantId/upload-logo')
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN)
+  @StaffRoles(RestaurantPermission.MANAGE_BRANDING)
   async uploadLogo(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Req() request: FastifyRequest,
@@ -93,27 +93,22 @@ export class RestaurantsController {
       throw new BadRequestException('Файл не передан');
     }
 
-    if (!ALLOWED_LOGO_MIME_TYPES.has(file.mimetype)) {
-      throw new BadRequestException('Допустимы только JPG, PNG и WebP');
-    }
-
     const buffer = await file.toBuffer();
-    if (buffer.length > 5 * 1024 * 1024) {
-      throw new BadRequestException('Размер файла не должен превышать 5 МБ');
-    }
+    const uploaded = await this.mediaUploadService.uploadLogo(
+      restaurantId,
+      buffer,
+      file.mimetype,
+    );
 
-    const extension = extname(file.filename) || '.jpg';
-    const fileName = `${generateUuidV7()}${extension}`;
-    const directory = join(process.cwd(), 'uploads', 'restaurants', restaurantId);
-    await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, fileName), buffer);
-
-    return { logoUrl: `/uploads/restaurants/${restaurantId}/${fileName}` };
+    return {
+      logoUrl: uploaded.url,
+      logoWebpUrl: uploaded.webpUrl,
+    };
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN)
+  @StaffRoles(RestaurantPermission.MANAGE_RESTAURANT)
   update(
     @Param('id', ParseUuidV7Pipe) id: string,
     @Body() dto: UpdateRestaurantDto,

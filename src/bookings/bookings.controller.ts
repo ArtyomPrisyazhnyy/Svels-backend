@@ -12,9 +12,10 @@ import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '../common/enums/user-role.enum';
+import { StaffRoles } from '../common/decorators/roles.decorator';
+import { RestaurantPermission } from '../common/enums/restaurant-permission.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
@@ -82,15 +83,15 @@ export class BookingsController {
   }
 
   @Get('restaurants/:restaurantId/bookings')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.VIEW_BOOKINGS)
   getRestaurantBookings(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
     return this.bookingsService.findByRestaurant(restaurantId);
   }
 
   @Patch('restaurants/:restaurantId/bookings/:bookingId/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.VIEW_BOOKINGS)
   updateStatus(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('bookingId', ParseUuidV7Pipe) bookingId: string,

@@ -7,9 +7,16 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { MENU_SERVICE } from '../common/constants/injection-tokens';
+import { PaymentMethod } from '../common/enums/payment-method.enum';
 import { PreOrderStatus } from '../common/enums/pre-order-status.enum';
-import { MenuService } from '../menu/menu.service';
-import { CreatePreOrderDto } from './dto/pre-order.dto';
+import { sanitizeText } from '../common/utils/sanitize.util';
+import type { MenuService } from '../menu/menu.service';
+import type { PaymentResponseDto } from '../payments/dto/payment.dto';
+import { PaymentsService } from '../payments/payments.service';
+import {
+  CreatePreOrderDto,
+  PreOrderResponseDto,
+} from './dto/pre-order.dto';
 import { PreOrderItem } from './entities/pre-order-item.entity';
 import { PreOrder } from './entities/pre-order.entity';
 
@@ -23,17 +30,18 @@ export class PreOrdersService {
     @Inject(MENU_SERVICE)
     private readonly menuService: MenuService,
     private readonly dataSource: DataSource,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async create(
     restaurantId: string,
     userId: string,
     dto: CreatePreOrderDto,
-  ): Promise<PreOrder & { items: PreOrderItem[] }> {
+  ): Promise<PreOrderResponseDto> {
     const menu = await this.menuService.getMenuByRestaurant(restaurantId);
     const allItems = menu.categories.flatMap((c) => c.items);
 
-    return this.dataSource.transaction(async (manager) => {
+    const order = await this.dataSource.transaction(async (manager) => {
       let totalAmount = 0;
       const orderItems: PreOrderItem[] = [];
 
@@ -45,9 +53,22 @@ export class PreOrdersService {
           );
         }
 
-        const lineTotal = Number(menuItem.price) * item.quantity;
-        totalAmount += lineTotal;
+        const unitPrice = Number(item.unitPrice);
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+          throw new BadRequestException('Некорректная цена позиции');
+        }
+
+        // Защита от явного занижения: не ниже базовой цены меню.
+        if (unitPrice + 0.001 < Number(menuItem.price)) {
+          throw new BadRequestException(
+            `Цена «${menuItem.name}» ниже цены в меню`,
+          );
+        }
+
+        totalAmount += unitPrice * item.quantity;
       }
+
+      totalAmount = Math.round(totalAmount * 100) / 100;
 
       const preOrder = manager.create(PreOrder, {
         restaurantId,
@@ -56,6 +77,7 @@ export class PreOrdersService {
         paymentMethod: dto.paymentMethod,
         totalAmount,
         status: PreOrderStatus.PENDING,
+        comment: dto.comment?.trim() ? sanitizeText(dto.comment.trim()) : null,
       });
 
       const savedOrder = await manager.save(preOrder);
@@ -65,15 +87,55 @@ export class PreOrdersService {
         const orderItem = manager.create(PreOrderItem, {
           preOrderId: savedOrder.id,
           menuItemId: item.menuItemId,
-          name: menuItem.name,
+          name: item.name?.trim()
+            ? sanitizeText(item.name.trim())
+            : menuItem.name,
           quantity: item.quantity,
-          unitPrice: Number(menuItem.price),
+          unitPrice: Number(item.unitPrice),
         });
         orderItems.push(await manager.save(orderItem));
       }
 
       return { ...savedOrder, items: orderItems };
     });
+
+    let payment: PaymentResponseDto | null = null;
+    let paymentRedirectUrl: string | null = null;
+
+    if (dto.paymentMethod === PaymentMethod.ONLINE) {
+      payment = await this.paymentsService.startOnlineCheckout({
+        restaurantId,
+        preOrderId: order.id,
+        userId,
+        amount: Number(order.totalAmount),
+        description: `Предзаказ ${order.id.slice(0, 8)}`,
+        customerFirstName: dto.customerName,
+        customerPhone: dto.customerPhone,
+      });
+      paymentRedirectUrl = payment.redirectUrl;
+    }
+
+    return {
+      id: order.id,
+      restaurantId: order.restaurantId,
+      userId: order.userId,
+      bookingId: order.bookingId,
+      status: order.status,
+      paymentMethod: order.paymentMethod,
+      totalAmount: Number(order.totalAmount),
+      comment: order.comment,
+      items: order.items.map((item) => ({
+        id: item.id,
+        menuItemId: item.menuItemId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+      })),
+      payment,
+      paymentRedirectUrl,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    };
   }
 
   async findByUser(userId: string): Promise<PreOrder[]> {

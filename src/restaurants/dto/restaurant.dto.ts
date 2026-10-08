@@ -18,6 +18,11 @@ export class RestaurantLocationDto {
   @MinLength(1)
   label?: string;
 
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  city?: string;
+
   @IsString()
   @MinLength(5)
   address: string;
@@ -87,6 +92,11 @@ export class UpdateRestaurantDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   logoUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  logoWebpUrl?: string | null;
 }
 
 export class ReviewRegistrationDto {

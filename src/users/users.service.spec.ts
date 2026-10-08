@@ -18,7 +18,8 @@ describe('UsersService platform auth lookup', () => {
     save: jest.fn(),
   };
 
-  const service = new UsersService(repository as never);
+  const eventEmitter = { emit: jest.fn() };
+  const service = new UsersService(repository as never, eventEmitter as never);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,5 +42,23 @@ describe('UsersService platform auth lookup', () => {
         ]),
       }),
     );
+  });
+
+  it('includes restaurantId for hall staff in profile responses', async () => {
+    repository.findOne.mockResolvedValue({
+      id: 'hall-id',
+      email: 'hall@example.com',
+      firstName: 'Hall',
+      lastName: 'Staff',
+      role: UserRole.RESTAURANT_HALL,
+      authProvider: 'local',
+      restaurantId: 'restaurant-id',
+      createdAt: new Date(),
+    });
+
+    const profile = await service.findById('hall-id');
+
+    expect(profile?.restaurantId).toBe('restaurant-id');
+    expect(profile?.role).toBe(UserRole.RESTAURANT_HALL);
   });
 });

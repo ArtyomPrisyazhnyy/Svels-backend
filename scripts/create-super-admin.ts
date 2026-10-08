@@ -2,6 +2,7 @@ import { config } from 'dotenv';
 import * as bcrypt from 'bcrypt';
 import { Client } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
+import { toPgClientConfig } from '../src/database/pg-connection';
 
 config();
 
@@ -51,13 +52,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const client = new Client({
-    host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    user: process.env.DB_USERNAME ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? 'postgres',
-    database: process.env.DB_NAME ?? 'svels',
-  });
+  const client = new Client(toPgClientConfig());
 
   await client.connect();
 

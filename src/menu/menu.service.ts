@@ -75,6 +75,8 @@ export class MenuService {
   async createItem(restaurantId: string, dto: CreateMenuItemDto): Promise<MenuItem> {
     await this.ensureCategoryBelongsToRestaurant(restaurantId, dto.categoryId);
 
+    const oldPrice = this.normalizeOldPrice(dto.price, dto.oldPrice);
+
     const item = this.itemRepository.create({
       restaurantId,
       categoryId: dto.categoryId,
@@ -84,9 +86,12 @@ export class MenuService {
       ingredients: dto.ingredients ? sanitizeText(dto.ingredients) : null,
       nutrition: normalizeNutrition(dto.nutrition),
       price: dto.price,
+      oldPrice,
       isAvailable: dto.isAvailable ?? true,
       imageUrl: dto.imageUrl,
+      imageWebpUrl: dto.imageWebpUrl ?? null,
       galleryUrls: dto.galleryUrls ?? [],
+      galleryWebpUrls: dto.galleryWebpUrls ?? [],
       modifierGroups: normalizeModifierGroups(dto.modifierGroups),
     });
 
@@ -126,9 +131,16 @@ export class MenuService {
       item.nutrition = normalizeNutrition(dto.nutrition);
     }
     if (dto.price !== undefined) item.price = dto.price;
+    if (dto.oldPrice !== undefined) {
+      item.oldPrice = this.normalizeOldPrice(Number(item.price), dto.oldPrice);
+    } else if (dto.price !== undefined && item.oldPrice !== null) {
+      item.oldPrice = this.normalizeOldPrice(Number(item.price), Number(item.oldPrice));
+    }
     if (dto.isAvailable !== undefined) item.isAvailable = dto.isAvailable;
     if (dto.imageUrl !== undefined) item.imageUrl = dto.imageUrl;
+    if (dto.imageWebpUrl !== undefined) item.imageWebpUrl = dto.imageWebpUrl;
     if (dto.galleryUrls !== undefined) item.galleryUrls = dto.galleryUrls;
+    if (dto.galleryWebpUrls !== undefined) item.galleryWebpUrls = dto.galleryWebpUrls;
     if (dto.modifierGroups !== undefined) {
       item.modifierGroups = normalizeModifierGroups(dto.modifierGroups);
     }
@@ -144,6 +156,35 @@ export class MenuService {
       throw new NotFoundException('Позиция меню не найдена');
     }
     await this.invalidateCache(restaurantId);
+  }
+
+  /** Проверка принадлежности позиции ресторану без JOIN из чужих модулей. */
+  async assertItemBelongsToRestaurant(
+    restaurantId: string,
+    menuItemId: string,
+  ): Promise<void> {
+    const item = await this.itemRepository.findOne({
+      where: { id: menuItemId, restaurantId },
+      select: { id: true },
+    });
+    if (!item) {
+      throw new NotFoundException('Позиция меню не найдена');
+    }
+  }
+
+  private normalizeOldPrice(
+    price: number,
+    oldPrice: number | null | undefined,
+  ): number | null {
+    if (oldPrice === undefined || oldPrice === null) {
+      return null;
+    }
+
+    if (Number(oldPrice) <= Number(price)) {
+      throw new BadRequestException('Старая цена должна быть больше актуальной');
+    }
+
+    return oldPrice;
   }
 
   private async ensureCategoryBelongsToRestaurant(

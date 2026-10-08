@@ -3,14 +3,15 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '../common/enums/user-role.enum';
+import { StaffRoles } from '../common/decorators/roles.decorator';
+import { RestaurantPermission } from '../common/enums/restaurant-permission.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -28,7 +29,7 @@ export class SocialLinksController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN)
+  @StaffRoles(RestaurantPermission.MANAGE_MARKETING)
   create(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Body() dto: CreateSocialLinkDto,
@@ -38,7 +39,7 @@ export class SocialLinksController {
 
   @Patch(':linkId')
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN)
+  @StaffRoles(RestaurantPermission.MANAGE_MARKETING)
   update(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('linkId', ParseUuidV7Pipe) linkId: string,
@@ -48,8 +49,9 @@ export class SocialLinksController {
   }
 
   @Delete(':linkId')
+  @HttpCode(204)
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN)
+  @StaffRoles(RestaurantPermission.MANAGE_MARKETING)
   remove(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('linkId', ParseUuidV7Pipe) linkId: string,

@@ -9,6 +9,8 @@ export enum RestaurantFontFamily {
   COMFORTAA = 'comfortaa',
   COMIC_RELIEF = 'comicRelief',
   ROBOTO = 'roboto',
+  TEKTUR = 'tektur',
+  PLAY = 'play',
 }
 
 export enum RestaurantColorTheme {

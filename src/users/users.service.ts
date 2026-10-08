@@ -1,7 +1,14 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { In, IsNull, Repository } from 'typeorm';
+import { PLATFORM_AUTH_ROLES } from '../common/auth/restaurant-role-permissions';
 import { AuthProvider } from '../common/enums/auth-provider.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { sanitizeText } from '../common/utils/sanitize.util';
@@ -10,14 +17,13 @@ import { CreateGuestUserDto } from './dto/create-guest-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { User } from './entities/user.entity';
+import { UserDeletedEvent } from './events/user-deleted.event';
 import {
   GoogleProfileInput,
   GuestAuthUserRecord,
   IUsersService,
   PlatformAuthUserRecord,
 } from './interfaces/users-service.interface';
-
-const PLATFORM_AUTH_ROLES = [UserRole.RESTAURANT_ADMIN, UserRole.SUPER_ADMIN] as const;
 
 const PLATFORM_AUTH_USER_SELECT = {
   id: true,
@@ -34,6 +40,7 @@ export class UsersService implements IUsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(dto: CreateUserDto, passwordHash: string): Promise<UserResponseDto> {
@@ -57,11 +64,7 @@ export class UsersService implements IUsersService {
     return this.toResponse(saved);
   }
 
-  async createGuest(
-    dto: CreateGuestUserDto,
-    passwordHash: string,
-    restaurantId: string,
-  ): Promise<UserResponseDto> {
+  async createGuest(dto: CreateGuestUserDto, restaurantId: string): Promise<UserResponseDto> {
     const existing = await this.findGuestByPhoneAndRestaurant(dto.phone, restaurantId);
     if (existing) {
       throw new ConflictException('Пользователь с таким номером уже зарегистрирован в этом заведении');
@@ -70,7 +73,7 @@ export class UsersService implements IUsersService {
     const user = this.userRepository.create({
       email: buildGuestUserEmail(restaurantId, dto.phone),
       phone: dto.phone,
-      passwordHash,
+      passwordHash: null,
       firstName: sanitizeText(dto.firstName),
       lastName: sanitizeText(dto.lastName),
       role: UserRole.USER,
@@ -124,7 +127,6 @@ export class UsersService implements IUsersService {
         id: true,
         email: true,
         phone: true,
-        passwordHash: true,
         role: true,
         authProvider: true,
         googleId: true,
@@ -214,6 +216,24 @@ export class UsersService implements IUsersService {
     return this.toResponse(saved);
   }
 
+  async deleteAccount(id: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    // Только гостевые аккаунты заведений — не админы платформы.
+    if (user.role !== UserRole.USER) {
+      throw new ForbiddenException('Удаление этого аккаунта недоступно');
+    }
+
+    await this.userRepository.delete(id);
+    this.eventEmitter.emit(
+      UserDeletedEvent.EVENT,
+      new UserDeletedEvent(id, user.restaurantId),
+    );
+  }
+
   private toResponse(user: User): UserResponseDto {
     const response: UserResponseDto = {
       id: user.id,
@@ -225,11 +245,7 @@ export class UsersService implements IUsersService {
       createdAt: user.createdAt,
     };
 
-    if (user.role === UserRole.RESTAURANT_ADMIN && user.restaurantId) {
-      response.restaurantId = user.restaurantId;
-    }
-
-    if (user.role === UserRole.USER && user.restaurantId) {
+    if (user.restaurantId) {
       response.restaurantId = user.restaurantId;
     }
 

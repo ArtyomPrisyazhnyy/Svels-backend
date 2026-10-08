@@ -9,5 +9,6 @@ export class RestaurantResponseDto {
   ownerId: string;
   customDomain: string | null;
   logoUrl: string | null;
+  logoWebpUrl: string | null;
   createdAt: Date;
 }

@@ -45,6 +45,10 @@ export class PreOrder {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalAmount: number;
 
+  /** Комментарий к заказу (длинный текст — тип Postgres `text`). */
+  @Column({ type: 'text', nullable: true })
+  comment: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -1,5 +1,6 @@
 export interface RegistrationLocationDto {
   label?: string;
+  city?: string;
   address: string;
 }
 

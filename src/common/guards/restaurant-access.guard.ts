@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { isRestaurantStaffRole } from '../auth/restaurant-role-permissions';
 import { UserRole } from '../enums/user-role.enum';
 import type { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 
@@ -26,7 +27,7 @@ export class RestaurantAccessGuard implements CanActivate {
       return true;
     }
 
-    if (user.role !== UserRole.RESTAURANT_ADMIN) {
+    if (!isRestaurantStaffRole(user.role)) {
       throw new ForbiddenException('Недостаточно прав');
     }
 

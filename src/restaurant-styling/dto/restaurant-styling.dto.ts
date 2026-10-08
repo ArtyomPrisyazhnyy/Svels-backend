@@ -63,6 +63,10 @@ export class UpdateRestaurantStylingDto {
   menuCategoryNavEnabled?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  favoritesEnabled?: boolean;
+
+  @IsOptional()
   @IsIn(HEADER_STYLES)
   headerStyle?: RestaurantHeaderStyle;
 
@@ -86,6 +90,7 @@ export class RestaurantStylingResponseDto {
   cardStyle: RestaurantCardStyle;
   magazineCardLayout: MagazineCardLayout;
   menuCategoryNavEnabled: boolean;
+  favoritesEnabled: boolean;
   headerStyle: RestaurantHeaderStyle;
   footerLayout: RestaurantFooterLayout;
   footerAccent: RestaurantFooterAccent;

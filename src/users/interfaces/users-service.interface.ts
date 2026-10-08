@@ -25,7 +25,6 @@ export interface GuestAuthUserRecord {
   id: string;
   email: string;
   phone: string | null;
-  passwordHash: string | null;
   role: UserRole;
   authProvider: AuthProvider;
   restaurantId: string | null;
@@ -33,11 +32,7 @@ export interface GuestAuthUserRecord {
 
 export interface IUsersService {
   create(dto: CreateUserDto, passwordHash: string): Promise<UserResponseDto>;
-  createGuest(
-    dto: CreateGuestUserDto,
-    passwordHash: string,
-    restaurantId: string,
-  ): Promise<UserResponseDto>;
+  createGuest(dto: CreateGuestUserDto, restaurantId: string): Promise<UserResponseDto>;
   findByEmail(email: string): Promise<PlatformAuthUserRecord | null>;
   findPlatformUserByEmail(email: string): Promise<PlatformAuthUserRecord | null>;
   findGuestByPhoneAndRestaurant(
@@ -49,4 +44,5 @@ export interface IUsersService {
   findOrCreateFromGoogle(profile: GoogleProfileInput): Promise<UserResponseDto>;
   updateProfile(id: string, firstName?: string, lastName?: string): Promise<UserResponseDto>;
   updatePassword(id: string, password: string): Promise<UserResponseDto>;
+  deleteAccount(id: string): Promise<void>;
 }

@@ -24,6 +24,10 @@ export class UpdateOrderSettingsDto {
   @IsOptional()
   @IsBoolean()
   paymentOnline?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  deliveryForSomeoneElse?: boolean;
 }
 
 export class OrderSettingsResponseDto {
@@ -34,5 +38,6 @@ export class OrderSettingsResponseDto {
   paymentCash: boolean;
   paymentCardOnSite: boolean;
   paymentOnline: boolean;
+  deliveryForSomeoneElse: boolean;
   updatedAt: Date;
 }

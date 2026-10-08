@@ -49,11 +49,20 @@ export class MenuItem {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
+  /** Перечёркнутая «старая» цена для отображения скидки; null — без скидки. */
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  oldPrice: number | null;
+
   @Column({ default: true })
   isAvailable: boolean;
 
+  /** Fallback (JPEG/PNG) для браузеров без WebP. */
   @Column()
   imageUrl: string;
+
+  /** WebP-вариант обложки; null — показывать только imageUrl. */
+  @Column({ type: 'varchar', nullable: true })
+  imageWebpUrl: string | null;
 
   /**
    * Дополнительные фотографии позиции (галерея в модальном окне товара).
@@ -61,6 +70,10 @@ export class MenuItem {
    */
   @Column({ type: 'jsonb', default: [] })
   galleryUrls: string[];
+
+  /** WebP-варианты галереи (параллельно galleryUrls по индексу). */
+  @Column({ type: 'jsonb', default: [] })
+  galleryWebpUrls: string[];
 
   @Column({ type: 'jsonb', default: [] })
   modifierGroups: MenuModifierGroup[];

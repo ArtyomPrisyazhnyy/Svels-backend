@@ -38,6 +38,9 @@ export class Restaurant {
   @Column({ type: 'varchar', nullable: true })
   logoUrl: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  logoWebpUrl: string | null;
+
   @ManyToOne('User', { createForeignKeyConstraints: false })
   @JoinColumn({ name: 'ownerId' })
   owner?: unknown;

@@ -7,14 +7,21 @@ import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import googleConfig from './config/google.config';
 import jwtConfig from './config/jwt.config';
+import bepaidConfig from './config/bepaid.config';
 import nextSiteConfig from './config/next-site.config';
+import leadsConfig from './config/leads.config';
+import otpConfig from './config/otp.config';
 import redisConfig from './config/redis.config';
+import storageConfig from './config/storage.config';
 import { AppCacheModule } from './cache/cache.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
+import { OtpModule } from './otp/otp.module';
 import { UsersModule } from './users/users.module';
 import { RestaurantsModule } from './restaurants/restaurants.module';
 import { MenuModule } from './menu/menu.module';
+import { MediaModule } from './media/media.module';
+import { StorageModule } from './storage/storage.module';
 import { SchedulesModule } from './schedules/schedules.module';
 import { FloorPlansModule } from './floor-plans/floor-plans.module';
 import { BookingsModule } from './bookings/bookings.module';
@@ -25,13 +32,31 @@ import { SocialLinksModule } from './social-links/social-links.module';
 import { OrderSettingsModule } from './order-settings/order-settings.module';
 import { BookingSettingsModule } from './booking-settings/booking-settings.module';
 import { RestaurantStylingModule } from './restaurant-styling/restaurant-styling.module';
+import { PromoBannersModule } from './promo-banners/promo-banners.module';
+import { LoyaltySettingsModule } from './loyalty-settings/loyalty-settings.module';
+import { PaymentSettingsModule } from './payment-settings/payment-settings.module';
+import { PaymentsModule } from './payments/payments.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { LeadsModule } from './leads/leads.module';
 import { NextRevalidationModule } from './next-revalidation/next-revalidation.module';
+import { DevModule } from './dev/dev.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, redisConfig, jwtConfig, googleConfig, nextSiteConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        redisConfig,
+        storageConfig,
+        jwtConfig,
+        googleConfig,
+        nextSiteConfig,
+        otpConfig,
+        leadsConfig,
+        bepaidConfig,
+      ],
     }),
     ThrottlerModule.forRoot([
       {
@@ -42,6 +67,11 @@ import { NextRevalidationModule } from './next-revalidation/next-revalidation.mo
     EventEmitterModule.forRoot(),
     DatabaseModule,
     AppCacheModule,
+    StorageModule,
+    MediaModule.forRoot({
+      registerProcessor: process.env.IMAGE_PROCESSOR_IN_API === 'true',
+    }),
+    OtpModule,
     NextRevalidationModule,
     AuthModule,
     UsersModule,
@@ -57,6 +87,13 @@ import { NextRevalidationModule } from './next-revalidation/next-revalidation.mo
     OrderSettingsModule,
     BookingSettingsModule,
     RestaurantStylingModule,
+    PromoBannersModule,
+    LoyaltySettingsModule,
+    PaymentSettingsModule,
+    PaymentsModule,
+    FavoritesModule,
+    LeadsModule,
+    DevModule,
   ],
   providers: [
     {

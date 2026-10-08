@@ -1,9 +1,17 @@
-export default () => ({
-  database: {
-    host: process.env.DB_HOST ?? 'localhost',
-    port: parseInt(process.env.DB_PORT ?? '5432', 10),
-    username: process.env.DB_USERNAME ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? 'postgres',
-    name: process.env.DB_NAME ?? 'svels',
-  },
-});
+import { resolvePostgresConnection } from '../database/pg-connection';
+
+export default () => {
+  const connection = resolvePostgresConnection();
+
+  return {
+    database: {
+      url: connection.url,
+      host: connection.host,
+      port: connection.port,
+      username: connection.username,
+      password: connection.password,
+      name: connection.database,
+      ssl: connection.ssl,
+    },
+  };
+};

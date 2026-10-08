@@ -8,9 +8,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '../common/enums/user-role.enum';
+import { StaffRoles } from '../common/decorators/roles.decorator';
+import { RestaurantPermission } from '../common/enums/restaurant-permission.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 import { SchedulesService } from './schedules.service';
@@ -25,8 +26,8 @@ export class SchedulesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.MANAGE_SCHEDULE)
   create(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Body() dto: CreateScheduleDto,
@@ -35,8 +36,8 @@ export class SchedulesController {
   }
 
   @Patch(':scheduleId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.RESTAURANT_ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.MANAGE_SCHEDULE)
   update(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('scheduleId', ParseUuidV7Pipe) scheduleId: string,

@@ -81,6 +81,10 @@ export class RestaurantStyling {
   @Column({ type: 'boolean', default: false })
   menuCategoryNavEnabled: boolean;
 
+  /** Избранное (сердечки / вкладка). Выкл. — UI скрыт; мобилка без флага — без экрана в бандле. */
+  @Column({ type: 'boolean', default: true })
+  favoritesEnabled: boolean;
+
   @Column({
     type: 'enum',
     enum: RestaurantHeaderStyle,

@@ -42,6 +42,9 @@ export class OrderSettingsService {
     if (dto.paymentOnline !== undefined) {
       settings.paymentOnline = dto.paymentOnline;
     }
+    if (dto.deliveryForSomeoneElse !== undefined) {
+      settings.deliveryForSomeoneElse = dto.deliveryForSomeoneElse;
+    }
 
     this.assertHasFulfillmentOption(settings);
     this.assertHasPaymentOption(settings);
@@ -86,6 +89,7 @@ export class OrderSettingsService {
       paymentCash: settings.paymentCash,
       paymentCardOnSite: settings.paymentCardOnSite,
       paymentOnline: settings.paymentOnline,
+      deliveryForSomeoneElse: settings.deliveryForSomeoneElse,
       updatedAt: settings.updatedAt,
     };
   }

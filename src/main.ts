@@ -23,7 +23,7 @@ async function bootstrap() {
   await app.register(cors, {
     origin: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Guest-Id'],
   });
   await app.register(multipart, {
     limits: { fileSize: 5 * 1024 * 1024 },

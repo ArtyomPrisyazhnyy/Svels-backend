@@ -27,6 +27,10 @@ export class RestaurantOrderSettings {
   @Column({ default: true })
   paymentOnline: boolean;
 
+  /** Гость может указать имя и телефон получателя (заказ «для другого человека»). */
+  @Column({ default: false })
+  deliveryForSomeoneElse: boolean;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }

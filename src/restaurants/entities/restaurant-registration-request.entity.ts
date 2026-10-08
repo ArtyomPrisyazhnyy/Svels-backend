@@ -30,7 +30,7 @@ export class RestaurantRegistrationRequest {
   isChain: boolean;
 
   @Column({ type: 'jsonb' })
-  locations: { label?: string; address: string }[];
+  locations: { label?: string; city?: string; address: string }[];
 
   @Column({ type: 'uuid' })
   applicantId: string;

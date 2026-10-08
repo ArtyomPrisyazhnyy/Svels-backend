@@ -11,6 +11,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';
@@ -116,6 +117,12 @@ export class CreateMenuItemDto {
   price: number;
 
   @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsNumber()
+  @Min(0)
+  oldPrice?: number | null;
+
+  @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
 
@@ -124,10 +131,21 @@ export class CreateMenuItemDto {
   imageUrl: string;
 
   @IsOptional()
+  @IsString()
+  @MinLength(1)
+  imageWebpUrl?: string | null;
+
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(9)
   @IsString({ each: true })
   galleryUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(9)
+  @IsString({ each: true })
+  galleryWebpUrls?: string[];
 
   @IsOptional()
   @IsArray()
@@ -170,6 +188,12 @@ export class UpdateMenuItemDto {
   price?: number;
 
   @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsNumber()
+  @Min(0)
+  oldPrice?: number | null;
+
+  @IsOptional()
   @IsBoolean()
   isAvailable?: boolean;
 
@@ -179,10 +203,22 @@ export class UpdateMenuItemDto {
   imageUrl?: string;
 
   @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  @MinLength(1)
+  imageWebpUrl?: string | null;
+
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(9)
   @IsString({ each: true })
   galleryUrls?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(9)
+  @IsString({ each: true })
+  galleryWebpUrls?: string[];
 
   @IsOptional()
   @IsArray()

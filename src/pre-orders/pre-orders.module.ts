@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MenuModule } from '../menu/menu.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { PreOrderItem } from './entities/pre-order-item.entity';
 import { PreOrder } from './entities/pre-order.entity';
 import { PreOrdersController } from './pre-orders.controller';
@@ -10,6 +11,7 @@ import { PreOrdersService } from './pre-orders.service';
   imports: [
     TypeOrmModule.forFeature([PreOrder, PreOrderItem]),
     MenuModule,
+    PaymentsModule,
   ],
   controllers: [PreOrdersController],
   providers: [PreOrdersService],

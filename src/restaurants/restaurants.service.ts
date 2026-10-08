@@ -22,6 +22,7 @@ import { RestaurantResponseDto } from './dto/restaurant-response.dto';
 import { ResolveDomainResponseDto } from './dto/resolve-domain.dto';
 import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantRegistrationRequest } from './entities/restaurant-registration-request.entity';
+import { RestaurantLocationsService } from './restaurant-locations.service';
 import { RestaurantApprovedEvent } from './events/restaurant-approved.event';
 import { RestaurantRegistrationReviewedEvent } from './events/restaurant-registration-reviewed.event';
 import { RestaurantRegistrationSubmittedEvent } from './events/restaurant-registration-submitted.event';
@@ -36,11 +37,13 @@ export class RestaurantsService {
     private readonly registrationRepository: Repository<RestaurantRegistrationRequest>,
     private readonly eventEmitter: EventEmitter2,
     private readonly cacheService: CacheService,
+    private readonly locationsService: RestaurantLocationsService,
   ) {}
 
   async register(dto: RegisterRestaurantDto, applicantId: string): Promise<RestaurantRegistrationRequest> {
     const locations = dto.locations.map((loc) => ({
       label: loc.label ? sanitizeText(loc.label) : undefined,
+      city: loc.city ? sanitizeText(loc.city) : undefined,
       address: sanitizeText(loc.address),
     }));
 
@@ -151,6 +154,12 @@ export class RestaurantsService {
 
     if (dto.logoUrl !== undefined) {
       restaurant.logoUrl = dto.logoUrl;
+      if (dto.logoUrl === null) {
+        restaurant.logoWebpUrl = null;
+      }
+    }
+    if (dto.logoWebpUrl !== undefined) {
+      restaurant.logoWebpUrl = dto.logoWebpUrl;
     }
 
     const saved = await this.restaurantRepository.save(restaurant);
@@ -236,29 +245,21 @@ export class RestaurantsService {
       ? request.locations
       : [{ address: request.address }];
 
-    let saved = null as Restaurant | null;
-
-    for (const location of locations) {
-      const restaurantName =
-        request.isChain && location.label
-          ? `${request.name} — ${location.label}`
-          : request.name;
-
-      const restaurant = this.restaurantRepository.create({
-        name: sanitizeText(restaurantName),
-        description: request.description,
-        address: sanitizeText(location.address),
-        unp: request.unp,
-        ownerId: request.applicantId,
-        status: RestaurantStatus.APPROVED,
-      });
-
-      saved = await this.restaurantRepository.save(restaurant);
-    }
-
-    if (!saved) {
+    if (!locations[0]?.address) {
       throw new BadRequestException('Не указаны адреса заведения');
     }
+
+    const restaurant = this.restaurantRepository.create({
+      name: sanitizeText(request.name),
+      description: request.description,
+      address: sanitizeText(locations[0].address),
+      unp: request.unp,
+      ownerId: request.applicantId,
+      status: RestaurantStatus.APPROVED,
+    });
+
+    const saved = await this.restaurantRepository.save(restaurant);
+    await this.locationsService.seedFromRegistration(saved.id, locations);
 
     request.status = RestaurantStatus.APPROVED;
     await this.registrationRepository.save(request);
@@ -287,6 +288,9 @@ export class RestaurantsService {
     });
 
     const saved = await this.restaurantRepository.save(restaurant);
+    await this.locationsService.seedFromRegistration(saved.id, [
+      { address: saved.address },
+    ]);
     return this.toResponse(saved);
   }
 
@@ -300,6 +304,7 @@ export class RestaurantsService {
       ownerId: restaurant.ownerId,
       customDomain: restaurant.customDomain,
       logoUrl: restaurant.logoUrl,
+      logoWebpUrl: restaurant.logoWebpUrl,
       createdAt: restaurant.createdAt,
     };
   }

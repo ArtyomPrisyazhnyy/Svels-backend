@@ -1,4 +1,13 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
@@ -33,5 +42,13 @@ export class UsersController {
     @Body() dto: ChangePasswordDto,
   ): Promise<UserResponseDto> {
     return this.usersService.updatePassword(user.id, dto.password);
+  }
+
+  /** Удаление собственного гостевого аккаунта (роль USER). */
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async deleteAccount(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.usersService.deleteAccount(user.id);
   }
 }

@@ -2,16 +2,27 @@ import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { UuidV7Subscriber } from './uuid-v7.subscriber';
+import { resolvePostgresConnection } from './pg-connection';
 
 config();
 
+const connection = resolvePostgresConnection();
+
 export default new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST ?? 'localhost',
-  port: parseInt(process.env.DB_PORT ?? '5432', 10),
-  username: process.env.DB_USERNAME ?? 'postgres',
-  password: process.env.DB_PASSWORD ?? 'postgres',
-  database: process.env.DB_NAME ?? 'svels',
+  ...(connection.url
+    ? { url: connection.url }
+    : {
+        host: connection.host,
+        port: connection.port,
+        username: connection.username,
+        password: connection.password,
+        database: connection.database,
+      }),
+  ssl: connection.ssl,
+  extra: {
+    connectionTimeoutMillis: 20_000,
+  },
   entities: ['src/**/*.entity.ts'],
   subscribers: [UuidV7Subscriber],
   synchronize: false,

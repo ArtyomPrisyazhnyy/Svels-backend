@@ -54,6 +54,9 @@ export class RestaurantStylingService {
     if (dto.menuCategoryNavEnabled !== undefined) {
       styling.menuCategoryNavEnabled = dto.menuCategoryNavEnabled;
     }
+    if (dto.favoritesEnabled !== undefined) {
+      styling.favoritesEnabled = dto.favoritesEnabled;
+    }
     if (dto.headerStyle !== undefined) {
       styling.headerStyle = dto.headerStyle;
     }
@@ -91,6 +94,7 @@ export class RestaurantStylingService {
       cardStyle: styling.cardStyle,
       magazineCardLayout: styling.magazineCardLayout,
       menuCategoryNavEnabled: styling.menuCategoryNavEnabled,
+      favoritesEnabled: styling.favoritesEnabled,
       headerStyle: styling.headerStyle,
       footerLayout: styling.footerLayout,
       footerAccent: styling.footerAccent,
