@@ -16,9 +16,7 @@ async function main(): Promise<void> {
   const pendingDown = schemaLog.downQueries.length;
 
   if (pendingUp > 0 || pendingDown > 0) {
-    console.error(
-      'Схема БД не совпадает с entity. Пометка baseline отменена.',
-    );
+    console.error('Схема БД не совпадает с entity. Пометка baseline отменена.');
     if (pendingUp > 0) {
       console.error('\n-- Ожидаемые изменения (up):');
       for (const query of schemaLog.upQueries) {
@@ -50,10 +48,10 @@ async function main(): Promise<void> {
     )
   `);
 
-  const existing: Array<{ id: number }> = await queryRunner.query(
+  const existing = (await queryRunner.query(
     `SELECT "id" FROM "migrations" WHERE "timestamp" = $1 AND "name" = $2 LIMIT 1`,
     [BASELINE_MIGRATION_TIMESTAMP, BASELINE_MIGRATION_NAME],
-  );
+  )) as Array<{ id: number }>;
 
   if (existing.length > 0) {
     console.log(
