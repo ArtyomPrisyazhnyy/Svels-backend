@@ -29,7 +29,9 @@ import { resolvePostgresConnection } from './pg-connection';
             connectionTimeoutMillis: 20_000,
           },
           autoLoadEntities: true,
-          synchronize: configService.get<string>('nodeEnv') !== 'production',
+          synchronize: process.env.DB_SYNC === 'true',
+          migrations: ['dist/database/migrations/*.js'],
+          migrationsRun: false,
           logging: configService.get<string>('nodeEnv') === 'development',
           subscribers: [UuidV7Subscriber],
         };

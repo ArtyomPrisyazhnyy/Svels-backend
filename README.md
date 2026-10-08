@@ -23,7 +23,23 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Backend API Svels (NestJS 11, Fastify, TypeORM, PostgreSQL, Redis).
+
+## Запуск
+
+```bash
+npm install
+docker compose -f docker-compose.dev.yml up -d   # Postgres 16 + Redis 7
+cp .env.example .env
+npm run migration:run
+npm run start:dev
+```
+
+Проверка: `GET http://localhost:3000/health` → `{"status":"ok","db":"up","redis":"up"}` (или `redis: "disabled"` при `REDIS_ENABLED=false`).
+
+Схема БД в production — только через миграции (`npm run migration:run`). `DB_SYNC=true` — только для осознанной локальной синхронизации.
+
+Подробнее для агентов и контрибьюторов: [AGENTS.md](./AGENTS.md).
 
 ## Project setup
 
