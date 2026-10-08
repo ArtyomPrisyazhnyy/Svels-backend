@@ -17,7 +17,10 @@ import {
 import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantLocation } from './entities/restaurant-location.entity';
 import { geocodeAddress } from './utils/geocode.util';
-import { formatLocationLine, inferCityFromAddress } from './utils/infer-city.util';
+import {
+  formatLocationLine,
+  inferCityFromAddress,
+} from './utils/infer-city.util';
 
 const DEFAULT_POINT = { lat: 53.9023, lng: 27.5619 };
 
@@ -32,7 +35,9 @@ export class RestaurantLocationsService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<RestaurantLocationResponseDto[]> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<RestaurantLocationResponseDto[]> {
     await this.ensureRestaurant(restaurantId);
     await this.ensureSeeded(restaurantId);
 
@@ -48,7 +53,10 @@ export class RestaurantLocationsService {
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
     const response = locations.map((location) => this.toResponse(location));
-    await this.cacheService.set(CacheKeys.restaurantLocations(restaurantId), response);
+    await this.cacheService.set(
+      CacheKeys.restaurantLocations(restaurantId),
+      response,
+    );
     return response;
   }
 
@@ -108,7 +116,9 @@ export class RestaurantLocationsService {
 
   async remove(restaurantId: string, locationId: string): Promise<void> {
     const location = await this.findOwned(restaurantId, locationId);
-    const count = await this.locationRepository.count({ where: { restaurantId } });
+    const count = await this.locationRepository.count({
+      where: { restaurantId },
+    });
     if (count <= 1) {
       throw new BadRequestException('Нужна хотя бы одна точка с адресом');
     }
@@ -121,7 +131,9 @@ export class RestaurantLocationsService {
   async geocode(query: string): Promise<{ lat: number; lng: number }> {
     const point = await geocodeAddress(sanitizeText(query));
     if (!point) {
-      throw new NotFoundException('Адрес не найден на карте. Поставьте метку вручную.');
+      throw new NotFoundException(
+        'Адрес не найден на карте. Поставьте метку вручную.',
+      );
     }
     return point;
   }
@@ -131,7 +143,9 @@ export class RestaurantLocationsService {
     restaurantId: string,
     rows: Array<{ city?: string; label?: string; address: string }>,
   ): Promise<void> {
-    const existing = await this.locationRepository.count({ where: { restaurantId } });
+    const existing = await this.locationRepository.count({
+      where: { restaurantId },
+    });
     if (existing > 0) {
       return;
     }
@@ -162,7 +176,9 @@ export class RestaurantLocationsService {
   }
 
   private async ensureSeeded(restaurantId: string): Promise<void> {
-    const count = await this.locationRepository.count({ where: { restaurantId } });
+    const count = await this.locationRepository.count({
+      where: { restaurantId },
+    });
     if (count > 0) {
       return;
     }
@@ -209,7 +225,9 @@ export class RestaurantLocationsService {
 
   private async afterMutate(restaurantId: string): Promise<void> {
     await this.cacheService.del(CacheKeys.restaurantLocations(restaurantId));
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
   }
 
   private async ensureRestaurant(restaurantId: string): Promise<Restaurant> {
@@ -235,7 +253,9 @@ export class RestaurantLocationsService {
     return location;
   }
 
-  private toResponse(location: RestaurantLocation): RestaurantLocationResponseDto {
+  private toResponse(
+    location: RestaurantLocation,
+  ): RestaurantLocationResponseDto {
     return {
       id: location.id,
       restaurantId: location.restaurantId,

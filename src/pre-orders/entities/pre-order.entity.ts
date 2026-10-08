@@ -36,7 +36,11 @@ export class PreOrder {
   @JoinColumn({ name: 'bookingId' })
   booking?: unknown;
 
-  @Column({ type: 'enum', enum: PreOrderStatus, default: PreOrderStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: PreOrderStatus,
+    default: PreOrderStatus.PENDING,
+  })
   status: PreOrderStatus;
 
   @Column({ type: 'enum', enum: PaymentMethod })

@@ -31,7 +31,11 @@ export function normalizePhone(raw: string): string {
   }
 
   // РФ: 8XXXXXXXXXX → 7XXXXXXXXXX
-  if (digits.startsWith('8') && digits.length === 11 && /^89\d{9}$/.test(digits)) {
+  if (
+    digits.startsWith('8') &&
+    digits.length === 11 &&
+    /^89\d{9}$/.test(digits)
+  ) {
     return `7${digits.slice(1)}`;
   }
 
@@ -97,6 +101,9 @@ export function maskPhone(normalized: string): string {
   return normalized;
 }
 
-export function buildGuestUserEmail(restaurantId: string, phone: string): string {
+export function buildGuestUserEmail(
+  restaurantId: string,
+  phone: string,
+): string {
   return `guest+${restaurantId}+${phone}@phone.svels.local`;
 }

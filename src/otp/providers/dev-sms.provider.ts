@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ISmsProvider, SmsSendResult } from '../interfaces/sms-provider.interface';
+import type {
+  ISmsProvider,
+  SmsSendResult,
+} from '../interfaces/sms-provider.interface';
 
 /**
  * Dev/fallback SMS: пишет код в лог, если боевые провайдеры не настроены.
@@ -18,13 +21,18 @@ export class DevSmsProvider implements ISmsProvider {
     const match = message.match(/(\d{4,8})/);
     if (match?.[1]) {
       const phone = phoneE164.replace(/\D/g, '');
-      this.lastCodes.set(phone, { code: match[1], at: new Date().toISOString() });
+      this.lastCodes.set(phone, {
+        code: match[1],
+        at: new Date().toISOString(),
+      });
     }
 
     return { ok: true, provider: this.name, messageId: `dev-${Date.now()}` };
   }
 
-  getLastCode(phoneNormalizedOrE164: string): { code: string; at: string } | null {
+  getLastCode(
+    phoneNormalizedOrE164: string,
+  ): { code: string; at: string } | null {
     const phone = phoneNormalizedOrE164.replace(/\D/g, '');
     return this.lastCodes.get(phone) ?? null;
   }

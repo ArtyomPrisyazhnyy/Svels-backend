@@ -5,12 +5,17 @@ import { RestaurantPermission } from '../common/enums/restaurant-permission.enum
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { SetDepositDto, UpdateBookingSettingsDto } from './dto/booking-settings.dto';
+import {
+  SetDepositDto,
+  UpdateBookingSettingsDto,
+} from './dto/booking-settings.dto';
 import { BookingSettingsService } from './booking-settings.service';
 
 @Controller('restaurants/:restaurantId/booking-settings')
 export class BookingSettingsController {
-  constructor(private readonly bookingSettingsService: BookingSettingsService) {}
+  constructor(
+    private readonly bookingSettingsService: BookingSettingsService,
+  ) {}
 
   @Get()
   getSettings(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {

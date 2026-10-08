@@ -87,7 +87,9 @@ export class BePaidApiClient {
     const token = response.checkout?.token;
     const redirectUrl = response.checkout?.redirect_url;
     if (!token || !redirectUrl) {
-      this.logger.error(`bePaid checkout create failed: ${JSON.stringify(response)}`);
+      this.logger.error(
+        `bePaid checkout create failed: ${JSON.stringify(response)}`,
+      );
       throw new BadGatewayException(
         response.message ?? 'bePaid не вернул токен оплаты',
       );
@@ -110,24 +112,23 @@ export class BePaidApiClient {
       'https://gateway.bepaid.by',
     );
 
-    const response = await this.requestJson<{ transaction?: Record<string, unknown> }>(
-      `${gatewayUrl}/transactions/captures`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: this.basicAuthHeader(credentials),
-        },
-        body: JSON.stringify({
-          request: {
-            parent_uid: params.parentUid,
-            amount: params.amountMinor,
-            tracking_id: params.trackingId,
-          },
-        }),
+    const response = await this.requestJson<{
+      transaction?: Record<string, unknown>;
+    }>(`${gatewayUrl}/transactions/captures`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: this.basicAuthHeader(credentials),
       },
-    );
+      body: JSON.stringify({
+        request: {
+          parent_uid: params.parentUid,
+          amount: params.amountMinor,
+          tracking_id: params.trackingId,
+        },
+      }),
+    });
 
     return this.mapTransaction(response.transaction);
   }
@@ -146,24 +147,23 @@ export class BePaidApiClient {
       'https://gateway.bepaid.by',
     );
 
-    const response = await this.requestJson<{ transaction?: Record<string, unknown> }>(
-      `${gatewayUrl}/transactions/voids`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: this.basicAuthHeader(credentials),
-        },
-        body: JSON.stringify({
-          request: {
-            parent_uid: params.parentUid,
-            amount: params.amountMinor,
-            tracking_id: params.trackingId,
-          },
-        }),
+    const response = await this.requestJson<{
+      transaction?: Record<string, unknown>;
+    }>(`${gatewayUrl}/transactions/voids`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: this.basicAuthHeader(credentials),
       },
-    );
+      body: JSON.stringify({
+        request: {
+          parent_uid: params.parentUid,
+          amount: params.amountMinor,
+          tracking_id: params.trackingId,
+        },
+      }),
+    });
 
     return this.mapTransaction(response.transaction);
   }
@@ -209,14 +209,19 @@ export class BePaidApiClient {
     return {
       uid: transaction.uid,
       parentUid:
-        typeof transaction.parent_uid === 'string' ? transaction.parent_uid : null,
+        typeof transaction.parent_uid === 'string'
+          ? transaction.parent_uid
+          : null,
       status: String(transaction.status ?? ''),
       type: String(transaction.type ?? ''),
       amount: Number(transaction.amount ?? 0),
       currency: String(transaction.currency ?? ''),
       trackingId:
-        typeof transaction.tracking_id === 'string' ? transaction.tracking_id : null,
-      message: typeof transaction.message === 'string' ? transaction.message : null,
+        typeof transaction.tracking_id === 'string'
+          ? transaction.tracking_id
+          : null,
+      message:
+        typeof transaction.message === 'string' ? transaction.message : null,
       test: Boolean(transaction.test),
       raw: transaction,
     };
@@ -237,12 +242,16 @@ export class BePaidApiClient {
     try {
       json = text ? (JSON.parse(text) as T) : ({} as T);
     } catch {
-      this.logger.error(`bePaid non-JSON (${response.status}): ${text.slice(0, 500)}`);
+      this.logger.error(
+        `bePaid non-JSON (${response.status}): ${text.slice(0, 500)}`,
+      );
       throw new BadGatewayException('Некорректный ответ bePaid');
     }
 
     if (!response.ok) {
-      this.logger.error(`bePaid HTTP ${response.status}: ${text.slice(0, 800)}`);
+      this.logger.error(
+        `bePaid HTTP ${response.status}: ${text.slice(0, 800)}`,
+      );
       throw new BadGatewayException(
         `bePaid ошибка ${response.status}: ${this.extractErrorMessage(json)}`,
       );

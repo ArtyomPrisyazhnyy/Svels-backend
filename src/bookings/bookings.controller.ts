@@ -34,7 +34,14 @@ export class BookingsController {
     @Query('date') date: string,
   ) {
     if (!DATE_RE.test(date)) {
-      return { enabled: false, mode: 'specific_table', slotMinutes: 30, bookingDurationMinutes: 120, date, slots: [] };
+      return {
+        enabled: false,
+        mode: 'specific_table',
+        slotMinutes: 30,
+        bookingDurationMinutes: 120,
+        date,
+        slots: [],
+      };
     }
     return this.bookingsService.getAvailability(restaurantId, date);
   }
@@ -85,7 +92,9 @@ export class BookingsController {
   @Get('restaurants/:restaurantId/bookings')
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
   @StaffRoles(RestaurantPermission.VIEW_BOOKINGS)
-  getRestaurantBookings(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
+  getRestaurantBookings(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+  ) {
     return this.bookingsService.findByRestaurant(restaurantId);
   }
 

@@ -75,9 +75,9 @@ describe('PromoBannersService', () => {
       }),
     );
     expect(cacheService.del).toHaveBeenCalled();
-    expect(nextRevalidationService.revalidateRestaurantPublicPage).toHaveBeenCalledWith(
-      restaurantId,
-    );
+    expect(
+      nextRevalidationService.revalidateRestaurantPublicPage,
+    ).toHaveBeenCalledWith(restaurantId);
   });
 
   it('rejects invalid banner link URL', async () => {

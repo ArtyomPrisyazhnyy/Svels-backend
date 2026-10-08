@@ -13,7 +13,10 @@ import { TableShape } from '../common/enums/table-shape.enum';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
-import type { BookingSettingsSnapshot, BookingSettingsService } from '../booking-settings/booking-settings.service';
+import type {
+  BookingSettingsSnapshot,
+  BookingSettingsService,
+} from '../booking-settings/booking-settings.service';
 import type { DecorLayoutData } from './entities/decor-layout-data.type';
 import {
   CreateFloorPlanDto,
@@ -96,7 +99,8 @@ export class FloorPlansService {
   /** Полная планировка зон/столов/decor для админа (включая невидимые гостям столы). */
   async getLayout(restaurantId: string): Promise<FloorPlanLayoutResponse> {
     const cacheKey = CacheKeys.floorPlan(restaurantId);
-    const cached = await this.cacheService.get<FloorPlanLayoutResponse>(cacheKey);
+    const cached =
+      await this.cacheService.get<FloorPlanLayoutResponse>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -106,7 +110,9 @@ export class FloorPlansService {
     return result;
   }
 
-  private async loadLayoutFromDb(restaurantId: string): Promise<FloorPlanLayoutResponse> {
+  private async loadLayoutFromDb(
+    restaurantId: string,
+  ): Promise<FloorPlanLayoutResponse> {
     const floorPlans = await this.floorPlanRepository.find({
       where: { restaurantId },
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
@@ -136,14 +142,18 @@ export class FloorPlansService {
   // ──────────────────────────── Public layout ─────────────────────────────
 
   /** Публичная планировка для гостя (только visibleToGuests + isActive столы). */
-  async getPublicLayout(restaurantId: string): Promise<PublicFloorPlanLayoutResponse> {
+  async getPublicLayout(
+    restaurantId: string,
+  ): Promise<PublicFloorPlanLayoutResponse> {
     const cacheKey = CacheKeys.publicLayout(restaurantId);
-    const cached = await this.cacheService.get<PublicFloorPlanLayoutResponse>(cacheKey);
+    const cached =
+      await this.cacheService.get<PublicFloorPlanLayoutResponse>(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const settings = await this.bookingSettingsService.getSnapshot(restaurantId);
+    const settings =
+      await this.bookingSettingsService.getSnapshot(restaurantId);
     const layout = await this.loadLayoutFromDb(restaurantId);
 
     const zones: PublicFloorPlanZone[] = layout.zones.map((zone) => ({
@@ -206,7 +216,10 @@ export class FloorPlansService {
     return saved;
   }
 
-  async deleteFloorPlan(restaurantId: string, floorPlanId: string): Promise<void> {
+  async deleteFloorPlan(
+    restaurantId: string,
+    floorPlanId: string,
+  ): Promise<void> {
     const plan = await this.findFloorPlanOrFail(restaurantId, floorPlanId);
 
     const hasTables = await this.tableRepository.exists({
@@ -249,7 +262,9 @@ export class FloorPlansService {
       // 2. Существующие столы зоны
       const existingTables = await tableRepo.find({ where: { floorPlanId } });
       const existingById = new Map(existingTables.map((t) => [t.id, t]));
-      const dtoIds = new Set(dto.tables.filter((t) => t.id).map((t) => t.id as string));
+      const dtoIds = new Set(
+        dto.tables.filter((t) => t.id).map((t) => t.id as string),
+      );
 
       // 3. Удаление отсутствующих столов (если нет активных броней)
       const toRemove = existingTables.filter((t) => !dtoIds.has(t.id));
@@ -269,7 +284,8 @@ export class FloorPlansService {
       // 4. Upsert столов из DTO
       for (const tableDto of dto.tables) {
         const target = tableDto.id
-          ? existingById.get(tableDto.id) ?? tableRepo.create({ id: tableDto.id })
+          ? (existingById.get(tableDto.id) ??
+            tableRepo.create({ id: tableDto.id }))
           : tableRepo.create();
 
         target.restaurantId = restaurantId;
@@ -290,7 +306,9 @@ export class FloorPlansService {
         target.depositAmount = tableDto.depositAmount ?? 0;
         target.isActive = tableDto.isActive ?? true;
         target.visibleToGuests = tableDto.visibleToGuests ?? true;
-        target.description = tableDto.description ? sanitizeText(tableDto.description) : null;
+        target.description = tableDto.description
+          ? sanitizeText(tableDto.description)
+          : null;
 
         await tableRepo.save(target);
       }
@@ -369,11 +387,15 @@ export class FloorPlansService {
     if (dto.cornerRadius !== undefined) table.cornerRadius = dto.cornerRadius;
     if (dto.rotation !== undefined) table.rotation = dto.rotation;
     if (dto.shape !== undefined) table.shape = dto.shape;
-    if (dto.depositAmount !== undefined) table.depositAmount = dto.depositAmount;
+    if (dto.depositAmount !== undefined)
+      table.depositAmount = dto.depositAmount;
     if (dto.isActive !== undefined) table.isActive = dto.isActive;
-    if (dto.visibleToGuests !== undefined) table.visibleToGuests = dto.visibleToGuests;
+    if (dto.visibleToGuests !== undefined)
+      table.visibleToGuests = dto.visibleToGuests;
     if (dto.description !== undefined) {
-      table.description = dto.description ? sanitizeText(dto.description) : null;
+      table.description = dto.description
+        ? sanitizeText(dto.description)
+        : null;
     }
 
     const saved = await this.tableRepository.save(table);
@@ -421,7 +443,9 @@ export class FloorPlansService {
     restaurantId: string,
     floorPlanId: string,
   ): Promise<FloorPlan | null> {
-    return this.floorPlanRepository.findOne({ where: { id: floorPlanId, restaurantId } });
+    return this.floorPlanRepository.findOne({
+      where: { id: floorPlanId, restaurantId },
+    });
   }
 
   // ────────────────────────────── Helpers ─────────────────────────────────

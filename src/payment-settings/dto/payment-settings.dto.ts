@@ -44,7 +44,9 @@ export class UpdatePaymentSettingsDto {
 
   /** Новый Secret Key. Пустая строка / omit — не менять. */
   @IsOptional()
-  @ValidateIf((_, value) => typeof value === 'string' && value.trim().length > 0)
+  @ValidateIf(
+    (_, value) => typeof value === 'string' && value.trim().length > 0,
+  )
   @IsString()
   @MinLength(8)
   @MaxLength(256)

@@ -53,9 +53,9 @@ describe('RestaurantLocationsService', () => {
     } as RestaurantLocation);
     locationRepository.count.mockResolvedValue(1);
 
-    await expect(service.remove(restaurantId, locationId)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.remove(restaurantId, locationId),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(locationRepository.remove).not.toHaveBeenCalled();
   });
 

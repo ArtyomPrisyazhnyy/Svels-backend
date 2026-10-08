@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -202,7 +207,11 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return JSON.parse(raw) as T;
   }
 
-  async setRequired<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
+  async setRequired<T>(
+    key: string,
+    value: T,
+    ttlSeconds?: number,
+  ): Promise<void> {
     await this.assertAvailable();
     const ttl = ttlSeconds ?? this.defaultTtl;
     try {
@@ -253,7 +262,10 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    if (this.client.status === 'connecting' || this.client.status === 'connect') {
+    if (
+      this.client.status === 'connecting' ||
+      this.client.status === 'connect'
+    ) {
       await this.waitUntilReady(2_000);
       this.degraded = false;
       return;

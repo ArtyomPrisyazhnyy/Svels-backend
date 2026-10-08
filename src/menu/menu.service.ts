@@ -9,10 +9,17 @@ import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
-import { CreateMenuCategoryDto, CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu.dto';
+import {
+  CreateMenuCategoryDto,
+  CreateMenuItemDto,
+  UpdateMenuItemDto,
+} from './dto/menu.dto';
 import { MenuCategory } from './entities/menu-category.entity';
 import { MenuItem } from './entities/menu-item.entity';
-import { normalizeModifierGroups, normalizeNutrition } from './utils/menu-item.util';
+import {
+  normalizeModifierGroups,
+  normalizeNutrition,
+} from './utils/menu-item.util';
 
 export interface MenuWithCategories {
   categories: Array<MenuCategory & { items: MenuItem[] }>;
@@ -72,7 +79,10 @@ export class MenuService {
     return saved;
   }
 
-  async createItem(restaurantId: string, dto: CreateMenuItemDto): Promise<MenuItem> {
+  async createItem(
+    restaurantId: string,
+    dto: CreateMenuItemDto,
+  ): Promise<MenuItem> {
     await this.ensureCategoryBelongsToRestaurant(restaurantId, dto.categoryId);
 
     const oldPrice = this.normalizeOldPrice(dto.price, dto.oldPrice);
@@ -114,12 +124,17 @@ export class MenuService {
     }
 
     if (dto.categoryId) {
-      await this.ensureCategoryBelongsToRestaurant(restaurantId, dto.categoryId);
+      await this.ensureCategoryBelongsToRestaurant(
+        restaurantId,
+        dto.categoryId,
+      );
       item.categoryId = dto.categoryId;
     }
     if (dto.name) item.name = sanitizeText(dto.name);
     if (dto.variantLabel !== undefined) {
-      item.variantLabel = dto.variantLabel ? sanitizeText(dto.variantLabel) : null;
+      item.variantLabel = dto.variantLabel
+        ? sanitizeText(dto.variantLabel)
+        : null;
     }
     if (dto.description !== undefined) {
       item.description = dto.description ? sanitizeText(dto.description) : null;
@@ -134,13 +149,17 @@ export class MenuService {
     if (dto.oldPrice !== undefined) {
       item.oldPrice = this.normalizeOldPrice(Number(item.price), dto.oldPrice);
     } else if (dto.price !== undefined && item.oldPrice !== null) {
-      item.oldPrice = this.normalizeOldPrice(Number(item.price), Number(item.oldPrice));
+      item.oldPrice = this.normalizeOldPrice(
+        Number(item.price),
+        Number(item.oldPrice),
+      );
     }
     if (dto.isAvailable !== undefined) item.isAvailable = dto.isAvailable;
     if (dto.imageUrl !== undefined) item.imageUrl = dto.imageUrl;
     if (dto.imageWebpUrl !== undefined) item.imageWebpUrl = dto.imageWebpUrl;
     if (dto.galleryUrls !== undefined) item.galleryUrls = dto.galleryUrls;
-    if (dto.galleryWebpUrls !== undefined) item.galleryWebpUrls = dto.galleryWebpUrls;
+    if (dto.galleryWebpUrls !== undefined)
+      item.galleryWebpUrls = dto.galleryWebpUrls;
     if (dto.modifierGroups !== undefined) {
       item.modifierGroups = normalizeModifierGroups(dto.modifierGroups);
     }
@@ -151,7 +170,10 @@ export class MenuService {
   }
 
   async deleteItem(restaurantId: string, itemId: string): Promise<void> {
-    const result = await this.itemRepository.delete({ id: itemId, restaurantId });
+    const result = await this.itemRepository.delete({
+      id: itemId,
+      restaurantId,
+    });
     if (!result.affected) {
       throw new NotFoundException('Позиция меню не найдена');
     }
@@ -181,7 +203,9 @@ export class MenuService {
     }
 
     if (Number(oldPrice) <= Number(price)) {
-      throw new BadRequestException('Старая цена должна быть больше актуальной');
+      throw new BadRequestException(
+        'Старая цена должна быть больше актуальной',
+      );
     }
 
     return oldPrice;
@@ -202,6 +226,8 @@ export class MenuService {
 
   private async invalidateCache(restaurantId: string): Promise<void> {
     await this.cacheService.del(CacheKeys.menu(restaurantId));
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
   }
 }

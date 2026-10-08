@@ -19,7 +19,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((v) => typeof v === 'number' && Number.isFinite(v));
+  return (
+    Array.isArray(value) &&
+    value.every((v) => typeof v === 'number' && Number.isFinite(v))
+  );
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -36,20 +39,28 @@ function isHexColor(value: unknown): boolean {
 
 const ALLOWED_DECOR_TYPES = new Set<string>(DECOR_OBJECT_TYPES);
 const ALLOWED_SHAPE_KINDS = new Set<string>(DECOR_SHAPE_KINDS);
-const ALLOWED_ICON_KINDS = new Set<string>(DECOR_ICON_KINDS as readonly string[]);
+const ALLOWED_ICON_KINDS = new Set<string>(
+  DECOR_ICON_KINDS as readonly string[],
+);
 
 function validateDecorObject(raw: unknown): string | null {
   if (!isObject(raw)) return 'объект декора должен быть объектом';
   const obj = raw as Plain<DecorObject>;
 
   if (!isString(obj.id)) return 'id обязателен';
-  if (!ALLOWED_DECOR_TYPES.has(obj.type)) return `неизвестный тип decor-объекта: ${String(obj.type)}`;
-  if (obj.rotation !== undefined && !isFiniteNumber(obj.rotation)) return 'rotation должен числом';
+  if (!ALLOWED_DECOR_TYPES.has(obj.type))
+    return `неизвестный тип decor-объекта: ${String(obj.type)}`;
+  if (obj.rotation !== undefined && !isFiniteNumber(obj.rotation))
+    return 'rotation должен числом';
 
   switch (obj.type) {
     case 'line':
     case 'polyline': {
-      if (!isNumberArray(obj.points) || obj.points.length < 4 || obj.points.length % 2 !== 0)
+      if (
+        !isNumberArray(obj.points) ||
+        obj.points.length < 4 ||
+        obj.points.length % 2 !== 0
+      )
         return 'points должен быть чётным массивом чисел (>= 4)';
       if (!isFiniteNumber(obj.strokeWidth)) return 'strokeWidth обязателен';
       if (!isHexColor(obj.color)) return 'color должен быть #hex';
@@ -62,7 +73,11 @@ function validateDecorObject(raw: unknown): string | null {
       return null;
     }
     case 'zone': {
-      if (!isNumberArray(obj.points) || obj.points.length < 6 || obj.points.length % 2 !== 0)
+      if (
+        !isNumberArray(obj.points) ||
+        obj.points.length < 6 ||
+        obj.points.length % 2 !== 0
+      )
         return 'points зоны должен быть чётным массивом чисел (>= 6)';
       if (!isHexColor(obj.fill)) return 'fill должен быть #hex';
       if (!isHexColor(obj.stroke)) return 'stroke должен быть #hex';
@@ -74,7 +89,8 @@ function validateDecorObject(raw: unknown): string | null {
       return null;
     }
     case 'shape': {
-      if (!ALLOWED_SHAPE_KINDS.has(obj.shape)) return `неизвестная shape: ${String(obj.shape)}`;
+      if (!ALLOWED_SHAPE_KINDS.has(obj.shape))
+        return `неизвестная shape: ${String(obj.shape)}`;
       if (!isFiniteNumber(obj.x)) return 'x обязателен';
       if (!isFiniteNumber(obj.y)) return 'y обязателен';
       if (!isFiniteNumber(obj.width)) return 'width обязателен';
@@ -89,19 +105,22 @@ function validateDecorObject(raw: unknown): string | null {
       if (!isFiniteNumber(obj.x)) return 'x обязателен';
       if (!isFiniteNumber(obj.y)) return 'y обязателен';
       if (!isFiniteNumber(obj.rotation)) return 'rotation обязателен';
-      if (typeof obj.text !== 'string' || obj.text.length === 0) return 'text обязателен';
+      if (typeof obj.text !== 'string' || obj.text.length === 0)
+        return 'text обязателен';
       if (!isFiniteNumber(obj.fontSize)) return 'fontSize обязателен';
       if (!isHexColor(obj.color)) return 'color должен быть #hex';
       return null;
     }
     case 'decor-icon': {
-      if (!ALLOWED_ICON_KINDS.has(obj.icon)) return `неизвестная icon: ${String(obj.icon)}`;
+      if (!ALLOWED_ICON_KINDS.has(obj.icon))
+        return `неизвестная icon: ${String(obj.icon)}`;
       if (!isFiniteNumber(obj.x)) return 'x обязателен';
       if (!isFiniteNumber(obj.y)) return 'y обязателен';
       if (!isFiniteNumber(obj.rotation)) return 'rotation обязателен';
       if (!isFiniteNumber(obj.width)) return 'width обязателен';
       if (!isFiniteNumber(obj.height)) return 'height обязателен';
-      if (obj.color !== undefined && !isHexColor(obj.color)) return 'color должен быть #hex';
+      if (obj.color !== undefined && !isHexColor(obj.color))
+        return 'color должен быть #hex';
       return null;
     }
     default:

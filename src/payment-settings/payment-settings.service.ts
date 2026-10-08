@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -25,7 +22,9 @@ export class PaymentSettingsService {
     private readonly configService: ConfigService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<PaymentSettingsResponseDto> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<PaymentSettingsResponseDto> {
     const settings = await this.findOrCreate(restaurantId);
     return this.toResponse(settings);
   }
@@ -59,7 +58,9 @@ export class PaymentSettingsService {
           where: { shopId: nextShopId },
         });
         if (conflict && conflict.restaurantId !== restaurantId) {
-          throw new BadRequestException('Этот Shop ID уже привязан к другому заведению');
+          throw new BadRequestException(
+            'Этот Shop ID уже привязан к другому заведению',
+          );
         }
       }
       settings.shopId = nextShopId;
@@ -71,7 +72,10 @@ export class PaymentSettingsService {
       settings.secretKeyEncrypted = encryptSecret(dto.secretKey.trim());
     }
 
-    if (settings.enabled && (!settings.shopId || !settings.secretKeyEncrypted)) {
+    if (
+      settings.enabled &&
+      (!settings.shopId || !settings.secretKeyEncrypted)
+    ) {
       throw new BadRequestException(
         'Чтобы включить онлайн-оплату, укажите Shop ID и Secret Key bePaid',
       );
@@ -85,7 +89,9 @@ export class PaymentSettingsService {
    * Credentials для API bePaid.
    * Приоритет: настройки заведения → fallback из .env (локальная разработка).
    */
-  async resolveCredentials(restaurantId: string): Promise<RestaurantBePaidCredentials> {
+  async resolveCredentials(
+    restaurantId: string,
+  ): Promise<RestaurantBePaidCredentials> {
     const settings = await this.findOrCreate(restaurantId);
 
     if (settings.shopId && settings.secretKeyEncrypted) {
@@ -106,19 +112,25 @@ export class PaymentSettingsService {
       };
     }
 
-    const envShopId = this.configService.get<string>('bepaid.shopId', '').trim();
-    const envSecret = this.configService.get<string>('bepaid.secretKey', '').trim();
+    const envShopId = this.configService
+      .get<string>('bepaid.shopId', '')
+      .trim();
+    const envSecret = this.configService
+      .get<string>('bepaid.secretKey', '')
+      .trim();
     if (envShopId && envSecret) {
       return {
         restaurantId,
         shopId: envShopId,
         secretKey: envSecret,
         testMode: this.configService.get<boolean>('bepaid.testMode', true),
-        checkoutTransactionType: this.configService.get<'authorization' | 'payment'>(
-          'bepaid.checkoutTransactionType',
-          'authorization',
+        checkoutTransactionType: this.configService.get<
+          'authorization' | 'payment'
+        >('bepaid.checkoutTransactionType', 'authorization'),
+        autoCapture: this.configService.get<boolean>(
+          'bepaid.autoCapture',
+          false,
         ),
-        autoCapture: this.configService.get<boolean>('bepaid.autoCapture', false),
         currency: this.configService.get<string>('bepaid.currency', 'BYN'),
       };
     }
@@ -128,7 +140,9 @@ export class PaymentSettingsService {
     );
   }
 
-  async findByShopId(shopId: string): Promise<RestaurantPaymentSettings | null> {
+  async findByShopId(
+    shopId: string,
+  ): Promise<RestaurantPaymentSettings | null> {
     return this.settingsRepository.findOne({ where: { shopId } });
   }
 
@@ -145,7 +159,9 @@ export class PaymentSettingsService {
 
     let decoded: string;
     try {
-      decoded = Buffer.from(authorizationHeader.slice(6), 'base64').toString('utf8');
+      decoded = Buffer.from(authorizationHeader.slice(6), 'base64').toString(
+        'utf8',
+      );
     } catch {
       return null;
     }
@@ -183,19 +199,30 @@ export class PaymentSettingsService {
       };
     }
 
-    const envShopId = this.configService.get<string>('bepaid.shopId', '').trim();
-    const envSecret = this.configService.get<string>('bepaid.secretKey', '').trim();
-    if (envShopId && envSecret && shopId === envShopId && secretsEqual(envSecret, secretKey)) {
+    const envShopId = this.configService
+      .get<string>('bepaid.shopId', '')
+      .trim();
+    const envSecret = this.configService
+      .get<string>('bepaid.secretKey', '')
+      .trim();
+    if (
+      envShopId &&
+      envSecret &&
+      shopId === envShopId &&
+      secretsEqual(envSecret, secretKey)
+    ) {
       return {
         restaurantId: '',
         shopId,
         secretKey,
         testMode: this.configService.get<boolean>('bepaid.testMode', true),
-        checkoutTransactionType: this.configService.get<'authorization' | 'payment'>(
-          'bepaid.checkoutTransactionType',
-          'authorization',
+        checkoutTransactionType: this.configService.get<
+          'authorization' | 'payment'
+        >('bepaid.checkoutTransactionType', 'authorization'),
+        autoCapture: this.configService.get<boolean>(
+          'bepaid.autoCapture',
+          false,
         ),
-        autoCapture: this.configService.get<boolean>('bepaid.autoCapture', false),
         currency: this.configService.get<string>('bepaid.currency', 'BYN'),
       };
     }
@@ -203,8 +230,12 @@ export class PaymentSettingsService {
     return null;
   }
 
-  private async findOrCreate(restaurantId: string): Promise<RestaurantPaymentSettings> {
-    const existing = await this.settingsRepository.findOne({ where: { restaurantId } });
+  private async findOrCreate(
+    restaurantId: string,
+  ): Promise<RestaurantPaymentSettings> {
+    const existing = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
     if (existing) {
       return existing;
     }
@@ -222,7 +253,9 @@ export class PaymentSettingsService {
     return this.settingsRepository.save(created);
   }
 
-  private toResponse(settings: RestaurantPaymentSettings): PaymentSettingsResponseDto {
+  private toResponse(
+    settings: RestaurantPaymentSettings,
+  ): PaymentSettingsResponseDto {
     return {
       restaurantId: settings.restaurantId,
       enabled: settings.enabled,

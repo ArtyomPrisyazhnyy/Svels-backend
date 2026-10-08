@@ -60,7 +60,10 @@ export class FavoritesService {
     menuItemId: string,
     owner: FavoriteOwner,
   ): Promise<FavoritesListResponseDto> {
-    await this.menuService.assertItemBelongsToRestaurant(restaurantId, menuItemId);
+    await this.menuService.assertItemBelongsToRestaurant(
+      restaurantId,
+      menuItemId,
+    );
 
     const existing = await this.findOne(restaurantId, menuItemId, owner);
     if (!existing) {

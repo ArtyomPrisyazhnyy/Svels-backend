@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ISmsProvider, SmsSendResult } from '../interfaces/sms-provider.interface';
+import type {
+  ISmsProvider,
+  SmsSendResult,
+} from '../interfaces/sms-provider.interface';
 
 @Injectable()
 export class SmsByProvider implements ISmsProvider {
@@ -13,7 +16,10 @@ export class SmsByProvider implements ISmsProvider {
   constructor(private readonly configService: ConfigService) {
     this.token = this.configService.get<string>('smsBy.token', '');
     this.alphaname = this.configService.get<string>('smsBy.alphaname', 'Svels');
-    this.apiUrl = this.configService.get<string>('smsBy.apiUrl', 'https://app.sms.by/api/v1');
+    this.apiUrl = this.configService.get<string>(
+      'smsBy.apiUrl',
+      'https://app.sms.by/api/v1',
+    );
   }
 
   async send(phoneE164: string, message: string): Promise<SmsSendResult> {
@@ -43,7 +49,10 @@ export class SmsByProvider implements ISmsProvider {
 
       const ok =
         response.ok &&
-        (data.status === 'ok' || data.status === 'OK' || data.status === 1 || Boolean(data.message_id));
+        (data.status === 'ok' ||
+          data.status === 'OK' ||
+          data.status === 1 ||
+          Boolean(data.message_id));
 
       if (!ok) {
         const error = data.error ?? data.message ?? `HTTP_${response.status}`;
@@ -54,10 +63,12 @@ export class SmsByProvider implements ISmsProvider {
       return {
         ok: true,
         provider: this.name,
-        messageId: data.message_id != null ? String(data.message_id) : undefined,
+        messageId:
+          data.message_id != null ? String(data.message_id) : undefined,
       };
     } catch (error) {
-      const messageText = error instanceof Error ? error.message : 'SMS_BY_ERROR';
+      const messageText =
+        error instanceof Error ? error.message : 'SMS_BY_ERROR';
       this.logger.warn(`SMS.by send error: ${messageText}`);
       return { ok: false, provider: this.name, error: messageText };
     }

@@ -47,7 +47,11 @@ export class FavoritesController {
     if (!guestId) {
       throw new BadRequestException('guestId обязателен');
     }
-    return this.favoritesService.mergeGuestIntoUser(restaurantId, user.id, guestId);
+    return this.favoritesService.mergeGuestIntoUser(
+      restaurantId,
+      user.id,
+      guestId,
+    );
   }
 
   @Post(':menuItemId')

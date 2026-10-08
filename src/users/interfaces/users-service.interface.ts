@@ -32,9 +32,14 @@ export interface GuestAuthUserRecord {
 
 export interface IUsersService {
   create(dto: CreateUserDto, passwordHash: string): Promise<UserResponseDto>;
-  createGuest(dto: CreateGuestUserDto, restaurantId: string): Promise<UserResponseDto>;
+  createGuest(
+    dto: CreateGuestUserDto,
+    restaurantId: string,
+  ): Promise<UserResponseDto>;
   findByEmail(email: string): Promise<PlatformAuthUserRecord | null>;
-  findPlatformUserByEmail(email: string): Promise<PlatformAuthUserRecord | null>;
+  findPlatformUserByEmail(
+    email: string,
+  ): Promise<PlatformAuthUserRecord | null>;
   findGuestByPhoneAndRestaurant(
     phone: string,
     restaurantId: string,
@@ -42,7 +47,11 @@ export interface IUsersService {
   findByGoogleId(googleId: string): Promise<UserResponseDto | null>;
   findById(id: string): Promise<UserResponseDto | null>;
   findOrCreateFromGoogle(profile: GoogleProfileInput): Promise<UserResponseDto>;
-  updateProfile(id: string, firstName?: string, lastName?: string): Promise<UserResponseDto>;
+  updateProfile(
+    id: string,
+    firstName?: string,
+    lastName?: string,
+  ): Promise<UserResponseDto>;
   updatePassword(id: string, password: string): Promise<UserResponseDto>;
   deleteAccount(id: string): Promise<void>;
 }

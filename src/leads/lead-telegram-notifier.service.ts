@@ -14,7 +14,12 @@ export function escapeTelegramHtml(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
-export function formatLeadContactChannels(lead: Pick<LandingLead, 'contactTelegram' | 'contactWhatsapp' | 'contactViber'>): string {
+export function formatLeadContactChannels(
+  lead: Pick<
+    LandingLead,
+    'contactTelegram' | 'contactWhatsapp' | 'contactViber'
+  >,
+): string {
   const channels: string[] = [];
   if (lead.contactTelegram) channels.push('Telegram');
   if (lead.contactWhatsapp) channels.push('WhatsApp');
@@ -46,7 +51,10 @@ export class LeadTelegramNotifierService {
   private readonly chatId: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.botToken = this.configService.get<string>('leads.telegramBotToken', '');
+    this.botToken = this.configService.get<string>(
+      'leads.telegramBotToken',
+      '',
+    );
     this.chatId = this.configService.get<string>('leads.telegramChatId', '');
   }
 

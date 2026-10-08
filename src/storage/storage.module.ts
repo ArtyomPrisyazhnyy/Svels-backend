@@ -18,7 +18,10 @@ import { YandexObjectStorage } from './yandex-object-storage';
         local: LocalObjectStorage,
         yandex: YandexObjectStorage,
       ) => {
-        const driver = configService.get<'local' | 'yandex'>('storage.driver', 'local');
+        const driver = configService.get<'local' | 'yandex'>(
+          'storage.driver',
+          'local',
+        );
         return driver === 'yandex' ? yandex : local;
       },
     },

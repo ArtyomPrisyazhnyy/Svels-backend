@@ -16,10 +16,12 @@ describe('AuthService guest OTP', () => {
   const phone = '375291234567';
 
   let authService: AuthService;
-  let usersService: jest.Mocked<Pick<
-    IUsersService,
-    'findGuestByPhoneAndRestaurant' | 'findById' | 'createGuest'
-  >>;
+  let usersService: jest.Mocked<
+    Pick<
+      IUsersService,
+      'findGuestByPhoneAndRestaurant' | 'findById' | 'createGuest'
+    >
+  >;
   let otpStore: jest.Mocked<
     Pick<
       OtpStoreService,
@@ -107,9 +109,14 @@ describe('AuthService guest OTP', () => {
 
   it('sends via telegram when delivery succeeds', async () => {
     telegram.sendCode.mockResolvedValue({ ok: true, requestId: 'req-1' });
-    telegram.waitForDelivery.mockResolvedValue({ delivered: true, status: 'delivered' });
+    telegram.waitForDelivery.mockResolvedValue({
+      delivered: true,
+      status: 'delivered',
+    });
 
-    const result = await authService.sendGuestOtp(restaurantId, { phone: '+375291234567' });
+    const result = await authService.sendGuestOtp(restaurantId, {
+      phone: '+375291234567',
+    });
 
     expect(result.channel).toBe('telegram');
     expect(smsRouter.sendOtp).not.toHaveBeenCalled();
@@ -117,9 +124,15 @@ describe('AuthService guest OTP', () => {
   });
 
   it('falls back to SMS when telegram fails', async () => {
-    telegram.sendCode.mockResolvedValue({ ok: false, unavailable: true, error: 'NO_TG' });
+    telegram.sendCode.mockResolvedValue({
+      ok: false,
+      unavailable: true,
+      error: 'NO_TG',
+    });
 
-    const result = await authService.sendGuestOtp(restaurantId, { phone: '+375291234567' });
+    const result = await authService.sendGuestOtp(restaurantId, {
+      phone: '+375291234567',
+    });
 
     expect(result.channel).toBe('sms');
     expect(smsRouter.sendOtp).toHaveBeenCalledWith(phone, '123456');
@@ -139,7 +152,9 @@ describe('AuthService guest OTP', () => {
       country: 'BY',
     });
 
-    const result = await authService.resendGuestOtp(restaurantId, { phone: '+375291234567' });
+    const result = await authService.resendGuestOtp(restaurantId, {
+      phone: '+375291234567',
+    });
 
     expect(telegram.sendCode).not.toHaveBeenCalled();
     expect(smsRouter.sendOtp).toHaveBeenCalled();
@@ -148,7 +163,11 @@ describe('AuthService guest OTP', () => {
 
   it('throws when SMS fails after telegram miss', async () => {
     telegram.sendCode.mockResolvedValue({ ok: false, error: 'fail' });
-    smsRouter.sendOtp.mockResolvedValue({ ok: false, provider: 'sms_by', error: 'down' });
+    smsRouter.sendOtp.mockResolvedValue({
+      ok: false,
+      provider: 'sms_by',
+      error: 'down',
+    });
 
     await expect(
       authService.sendGuestOtp(restaurantId, { phone: '+375291234567' }),

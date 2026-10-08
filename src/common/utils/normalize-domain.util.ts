@@ -1,5 +1,4 @@
-const DOMAIN_PATTERN =
-  /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
+const DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
 
 export function normalizeDomain(raw: string): string {
   let host = raw.trim().toLowerCase();

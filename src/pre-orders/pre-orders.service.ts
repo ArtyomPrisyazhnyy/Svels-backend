@@ -13,10 +13,7 @@ import { sanitizeText } from '../common/utils/sanitize.util';
 import type { MenuService } from '../menu/menu.service';
 import type { PaymentResponseDto } from '../payments/dto/payment.dto';
 import { PaymentsService } from '../payments/payments.service';
-import {
-  CreatePreOrderDto,
-  PreOrderResponseDto,
-} from './dto/pre-order.dto';
+import { CreatePreOrderDto, PreOrderResponseDto } from './dto/pre-order.dto';
 import { PreOrderItem } from './entities/pre-order-item.entity';
 import { PreOrder } from './entities/pre-order.entity';
 
@@ -145,7 +142,10 @@ export class PreOrdersService {
     });
   }
 
-  async findById(id: string, userId: string): Promise<PreOrder & { items: PreOrderItem[] }> {
+  async findById(
+    id: string,
+    userId: string,
+  ): Promise<PreOrder & { items: PreOrderItem[] }> {
     const preOrder = await this.preOrderRepository.findOne({
       where: { id, userId },
     });

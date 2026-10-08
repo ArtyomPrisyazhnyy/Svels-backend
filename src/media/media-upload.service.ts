@@ -111,10 +111,15 @@ export class MediaUploadService {
     mimeType: string;
   }): Promise<UploadedImageUrls> {
     if (!this.imageQueue) {
-      throw new ServiceUnavailableException('Очередь обработки изображений недоступна');
+      throw new ServiceUnavailableException(
+        'Очередь обработки изображений недоступна',
+      );
     }
 
-    const timeoutMs = this.configService.get<number>('storage.image.jobTimeoutMs', 60_000);
+    const timeoutMs = this.configService.get<number>(
+      'storage.image.jobTimeoutMs',
+      60_000,
+    );
     const job = await this.imageQueue.add(
       'process',
       {
@@ -150,7 +155,8 @@ export class MediaUploadService {
         connection: {
           host: this.configService.get<string>('redis.host', 'localhost'),
           port: this.configService.get<number>('redis.port', 6379),
-          password: this.configService.get<string>('redis.password') || undefined,
+          password:
+            this.configService.get<string>('redis.password') || undefined,
         },
       });
     }

@@ -44,7 +44,9 @@ export class AnalyticsService {
     await this.visitStatRepository.save(stat);
   }
 
-  async getVisitSummary(query: AnalyticsQueryDto): Promise<RestaurantVisitSummary[]> {
+  async getVisitSummary(
+    query: AnalyticsQueryDto,
+  ): Promise<RestaurantVisitSummary[]> {
     const qb = this.visitStatRepository
       .createQueryBuilder('stat')
       .select('stat.restaurantId', 'restaurantId')

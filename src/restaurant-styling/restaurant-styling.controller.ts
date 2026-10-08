@@ -10,7 +10,9 @@ import { RestaurantStylingService } from './restaurant-styling.service';
 
 @Controller('restaurants/:restaurantId/styling')
 export class RestaurantStylingController {
-  constructor(private readonly restaurantStylingService: RestaurantStylingService) {}
+  constructor(
+    private readonly restaurantStylingService: RestaurantStylingService,
+  ) {}
 
   @Get()
   getStyling(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {

@@ -2,7 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
-import { OrderSettingsResponseDto, UpdateOrderSettingsDto } from './dto/order-settings.dto';
+import {
+  OrderSettingsResponseDto,
+  UpdateOrderSettingsDto,
+} from './dto/order-settings.dto';
 import { RestaurantOrderSettings } from './entities/restaurant-order-settings.entity';
 
 @Injectable()
@@ -13,7 +16,9 @@ export class OrderSettingsService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<OrderSettingsResponseDto> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<OrderSettingsResponseDto> {
     const settings = await this.findOrCreate(restaurantId);
     return this.toResponse(settings);
   }
@@ -50,12 +55,18 @@ export class OrderSettingsService {
     this.assertHasPaymentOption(settings);
 
     const saved = await this.settingsRepository.save(settings);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
     return this.toResponse(saved);
   }
 
-  private async findOrCreate(restaurantId: string): Promise<RestaurantOrderSettings> {
-    const existing = await this.settingsRepository.findOne({ where: { restaurantId } });
+  private async findOrCreate(
+    restaurantId: string,
+  ): Promise<RestaurantOrderSettings> {
+    const existing = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
     if (existing) {
       return existing;
     }
@@ -70,17 +81,25 @@ export class OrderSettingsService {
       !settings.fulfillmentTakeaway &&
       !settings.fulfillmentDineIn
     ) {
-      throw new BadRequestException('Выберите хотя бы один способ получения заказа');
+      throw new BadRequestException(
+        'Выберите хотя бы один способ получения заказа',
+      );
     }
   }
 
   private assertHasPaymentOption(settings: RestaurantOrderSettings): void {
-    if (!settings.paymentCash && !settings.paymentCardOnSite && !settings.paymentOnline) {
+    if (
+      !settings.paymentCash &&
+      !settings.paymentCardOnSite &&
+      !settings.paymentOnline
+    ) {
       throw new BadRequestException('Выберите хотя бы один способ оплаты');
     }
   }
 
-  private toResponse(settings: RestaurantOrderSettings): OrderSettingsResponseDto {
+  private toResponse(
+    settings: RestaurantOrderSettings,
+  ): OrderSettingsResponseDto {
     return {
       restaurantId: settings.restaurantId,
       fulfillmentDelivery: settings.fulfillmentDelivery,

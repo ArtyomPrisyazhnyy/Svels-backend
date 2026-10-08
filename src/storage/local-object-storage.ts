@@ -35,7 +35,9 @@ export class LocalObjectStorage implements ObjectStorage {
     try {
       await unlink(join(this.root, this.normalizeKey(key)));
     } catch (error) {
-      this.logger.warn(`Failed to delete local object ${key}: ${String(error)}`);
+      this.logger.warn(
+        `Failed to delete local object ${key}: ${String(error)}`,
+      );
     }
   }
 

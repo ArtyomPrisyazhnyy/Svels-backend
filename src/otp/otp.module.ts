@@ -35,4 +35,3 @@ import { TelegramGatewayProvider } from './providers/telegram-gateway.provider';
   ],
 })
 export class OtpModule {}
-

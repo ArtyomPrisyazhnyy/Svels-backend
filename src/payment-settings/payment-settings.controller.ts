@@ -10,7 +10,9 @@ import { PaymentSettingsService } from './payment-settings.service';
 
 @Controller('restaurants/:restaurantId/payment-settings')
 export class PaymentSettingsController {
-  constructor(private readonly paymentSettingsService: PaymentSettingsService) {}
+  constructor(
+    private readonly paymentSettingsService: PaymentSettingsService,
+  ) {}
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)

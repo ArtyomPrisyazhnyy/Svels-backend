@@ -54,7 +54,10 @@ export class PaymentsService {
 
     const paymentId = generateUuidV7();
     const trackingId = `preorder:${params.preOrderId}:${paymentId.slice(0, 8)}`;
-    const siteUrl = this.configService.get<string>('bepaid.siteUrl', 'http://localhost:3001');
+    const siteUrl = this.configService.get<string>(
+      'bepaid.siteUrl',
+      'http://localhost:3001',
+    );
     const returnBase = `${siteUrl.replace(/\/$/, '')}/restaurants/${params.restaurantId}/payment/result`;
     const returnQuery = `preOrderId=${encodeURIComponent(params.preOrderId)}&paymentId=${encodeURIComponent(paymentId)}`;
 
@@ -102,7 +105,10 @@ export class PaymentsService {
     return this.toResponse(saved);
   }
 
-  async getByIdForUser(paymentId: string, userId: string): Promise<PaymentResponseDto> {
+  async getByIdForUser(
+    paymentId: string,
+    userId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.findOwnedPayment(paymentId, userId);
     return this.toResponse(payment);
   }
@@ -120,7 +126,10 @@ export class PaymentsService {
   }
 
   /** Синхронизация статуса с bePaid по токену (когда webhook не достучался локально). */
-  async syncFromCheckoutToken(paymentId: string, userId: string): Promise<PaymentResponseDto> {
+  async syncFromCheckoutToken(
+    paymentId: string,
+    userId: string,
+  ): Promise<PaymentResponseDto> {
     const payment = await this.findOwnedPayment(paymentId, userId);
     if (!payment.checkoutToken) {
       return this.toResponse(payment);
@@ -141,7 +150,9 @@ export class PaymentsService {
       credentials,
     );
     await this.applyCheckoutQueryPayload(payment, payload, credentials);
-    const refreshed = await this.paymentRepository.findOneByOrFail({ id: payment.id });
+    const refreshed = await this.paymentRepository.findOneByOrFail({
+      id: payment.id,
+    });
     return this.toResponse(refreshed);
   }
 
@@ -150,7 +161,9 @@ export class PaymentsService {
     body: Record<string, unknown>,
   ): Promise<void> {
     const webhookCreds =
-      await this.paymentSettingsService.verifyWebhookBasicAuth(authorizationHeader);
+      await this.paymentSettingsService.verifyWebhookBasicAuth(
+        authorizationHeader,
+      );
     if (!webhookCreds) {
       throw new BadRequestException('Неверный Authorization webhook bePaid');
     }
@@ -161,7 +174,9 @@ export class PaymentsService {
         where: { checkoutToken: body.token },
       });
       if (!payment) {
-        this.logger.warn(`Webhook checkout: payment not found for token ${body.token}`);
+        this.logger.warn(
+          `Webhook checkout: payment not found for token ${body.token}`,
+        );
         return;
       }
       if (
@@ -173,10 +188,11 @@ export class PaymentsService {
         );
         return;
       }
-      const credentials =
-        webhookCreds.restaurantId
-          ? webhookCreds
-          : await this.paymentSettingsService.resolveCredentials(payment.restaurantId);
+      const credentials = webhookCreds.restaurantId
+        ? webhookCreds
+        : await this.paymentSettingsService.resolveCredentials(
+            payment.restaurantId,
+          );
       await this.applyCheckoutQueryPayload(payment, body, credentials);
       return;
     }
@@ -191,7 +207,9 @@ export class PaymentsService {
       return;
     }
 
-    this.logger.warn(`Unknown bePaid webhook shape: ${JSON.stringify(body).slice(0, 400)}`);
+    this.logger.warn(
+      `Unknown bePaid webhook shape: ${JSON.stringify(body).slice(0, 400)}`,
+    );
   }
 
   async captureByPreOrder(
@@ -199,7 +217,8 @@ export class PaymentsService {
     preOrderId: string,
   ): Promise<PaymentResponseDto> {
     const payment = await this.findLatestPayment(restaurantId, preOrderId);
-    const credentials = await this.paymentSettingsService.resolveCredentials(restaurantId);
+    const credentials =
+      await this.paymentSettingsService.resolveCredentials(restaurantId);
     return this.capturePayment(payment, credentials);
   }
 
@@ -215,7 +234,8 @@ export class PaymentsService {
       throw new BadRequestException('Нет активного холда для отмены');
     }
 
-    const credentials = await this.paymentSettingsService.resolveCredentials(restaurantId);
+    const credentials =
+      await this.paymentSettingsService.resolveCredentials(restaurantId);
     const result = await this.bePaidApiClient.void(
       {
         parentUid: payment.bepaidUid,
@@ -297,7 +317,8 @@ export class PaymentsService {
 
     if (payload.expired === true) {
       payment.status = PaymentStatus.EXPIRED;
-      payment.lastMessage = typeof payload.message === 'string' ? payload.message : 'Token expired';
+      payment.lastMessage =
+        typeof payload.message === 'string' ? payload.message : 'Token expired';
       await this.paymentRepository.save(payment);
       return;
     }
@@ -326,7 +347,11 @@ export class PaymentsService {
         test: payload.test ?? payment.test,
         type:
           authOrPayment.type ??
-          (gateway.authorization ? 'authorization' : gateway.payment ? 'payment' : undefined),
+          (gateway.authorization
+            ? 'authorization'
+            : gateway.payment
+              ? 'payment'
+              : undefined),
       },
       credentials,
     );
@@ -337,7 +362,9 @@ export class PaymentsService {
     credentialsHint?: RestaurantBePaidCredentials | null,
   ): Promise<void> {
     const trackingId =
-      typeof transaction.tracking_id === 'string' ? transaction.tracking_id : null;
+      typeof transaction.tracking_id === 'string'
+        ? transaction.tracking_id
+        : null;
     const uid = typeof transaction.uid === 'string' ? transaction.uid : null;
     if (!trackingId && !uid) {
       return;
@@ -347,7 +374,9 @@ export class PaymentsService {
       (trackingId
         ? await this.paymentRepository.findOne({ where: { trackingId } })
         : null) ??
-      (uid ? await this.paymentRepository.findOne({ where: { bepaidUid: uid } }) : null);
+      (uid
+        ? await this.paymentRepository.findOne({ where: { bepaidUid: uid } })
+        : null);
 
     if (!payment) {
       this.logger.warn(
@@ -360,9 +389,7 @@ export class PaymentsService {
       credentialsHint?.restaurantId &&
       payment.restaurantId !== credentialsHint.restaurantId
     ) {
-      this.logger.warn(
-        `Webhook restaurant mismatch for payment ${payment.id}`,
-      );
+      this.logger.warn(`Webhook restaurant mismatch for payment ${payment.id}`);
       return;
     }
 
@@ -383,13 +410,18 @@ export class PaymentsService {
     const type = String(transaction.type ?? payment.transactionType ?? '');
     payment.bepaidUid = uid ?? payment.bepaidUid;
     payment.lastMessage =
-      typeof transaction.message === 'string' ? transaction.message : payment.lastMessage;
+      typeof transaction.message === 'string'
+        ? transaction.message
+        : payment.lastMessage;
     payment.lastPayload = transaction;
     payment.test = Boolean(transaction.test ?? payment.test);
     payment.transactionType = type || payment.transactionType;
 
     if (status === 'successful') {
-      if (type === 'authorization' || payment.transactionType === 'authorization') {
+      if (
+        type === 'authorization' ||
+        payment.transactionType === 'authorization'
+      ) {
         payment.status = PaymentStatus.AUTHORIZED;
         await this.paymentRepository.save(payment);
         await this.preOrderRepository.update(
@@ -397,10 +429,11 @@ export class PaymentsService {
           { status: PreOrderStatus.CONFIRMED },
         );
 
-        const credentials =
-          credentialsHint?.secretKey
-            ? credentialsHint
-            : await this.paymentSettingsService.resolveCredentials(payment.restaurantId);
+        const credentials = credentialsHint?.secretKey
+          ? credentialsHint
+          : await this.paymentSettingsService.resolveCredentials(
+              payment.restaurantId,
+            );
 
         if (credentials.autoCapture && payment.bepaidUid) {
           try {
@@ -446,7 +479,10 @@ export class PaymentsService {
     await this.paymentRepository.save(payment);
   }
 
-  private async findOwnedPayment(paymentId: string, userId: string): Promise<Payment> {
+  private async findOwnedPayment(
+    paymentId: string,
+    userId: string,
+  ): Promise<Payment> {
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId, userId },
     });
@@ -472,7 +508,10 @@ export class PaymentsService {
   }
 
   private resolveNotificationUrl(): string {
-    const explicit = this.configService.get<string>('bepaid.notificationUrl', '');
+    const explicit = this.configService.get<string>(
+      'bepaid.notificationUrl',
+      '',
+    );
     if (explicit.trim()) {
       return explicit.trim();
     }

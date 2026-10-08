@@ -36,7 +36,9 @@ export class BookingSettingsService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<BookingSettingsResponseDto> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<BookingSettingsResponseDto> {
     const settings = await this.findOrCreate(restaurantId);
     return this.toResponse(settings);
   }
@@ -77,7 +79,9 @@ export class BookingSettingsService {
 
     const saved = await this.settingsRepository.save(settings);
     await this.invalidateCache(restaurantId);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
     return this.toResponse(saved);
   }
 
@@ -95,7 +99,8 @@ export class BookingSettingsService {
   /** Кэшированный срез настроек для других модулей (bookings/availability). */
   async getSnapshot(restaurantId: string): Promise<BookingSettingsSnapshot> {
     const cacheKey = CacheKeys.bookingSettings(restaurantId);
-    const cached = await this.cacheService.get<BookingSettingsSnapshot>(cacheKey);
+    const cached =
+      await this.cacheService.get<BookingSettingsSnapshot>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -109,7 +114,9 @@ export class BookingSettingsService {
   private async findOrCreate(
     restaurantId: string,
   ): Promise<RestaurantBookingSettings> {
-    const existing = await this.settingsRepository.findOne({ where: { restaurantId } });
+    const existing = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
     if (existing) {
       return existing;
     }
@@ -126,7 +133,9 @@ export class BookingSettingsService {
     ]);
   }
 
-  private toSnapshot(settings: RestaurantBookingSettings): BookingSettingsSnapshot {
+  private toSnapshot(
+    settings: RestaurantBookingSettings,
+  ): BookingSettingsSnapshot {
     return {
       restaurantId: settings.restaurantId,
       bookingEnabled: settings.bookingEnabled,

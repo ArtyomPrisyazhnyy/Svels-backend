@@ -10,7 +10,10 @@ import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
-import { isValidDomain, normalizeDomain } from '../common/utils/normalize-domain.util';
+import {
+  isValidDomain,
+  normalizeDomain,
+} from '../common/utils/normalize-domain.util';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import {
   CreateRestaurantDto,
@@ -40,7 +43,10 @@ export class RestaurantsService {
     private readonly locationsService: RestaurantLocationsService,
   ) {}
 
-  async register(dto: RegisterRestaurantDto, applicantId: string): Promise<RestaurantRegistrationRequest> {
+  async register(
+    dto: RegisterRestaurantDto,
+    applicantId: string,
+  ): Promise<RestaurantRegistrationRequest> {
     const locations = dto.locations.map((loc) => ({
       label: loc.label ? sanitizeText(loc.label) : undefined,
       city: loc.city ? sanitizeText(loc.city) : undefined,
@@ -62,7 +68,9 @@ export class RestaurantsService {
 
     this.eventEmitter.emit(
       'restaurant.registration.submitted',
-      new RestaurantRegistrationSubmittedEvent(this.toRegistrationPayload(saved)),
+      new RestaurantRegistrationSubmittedEvent(
+        this.toRegistrationPayload(saved),
+      ),
     );
 
     return saved;
@@ -89,7 +97,8 @@ export class RestaurantsService {
     }
 
     const cacheKey = CacheKeys.restaurantByDomain(domain);
-    const cached = await this.cacheService.get<ResolveDomainResponseDto>(cacheKey);
+    const cached =
+      await this.cacheService.get<ResolveDomainResponseDto>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -113,7 +122,9 @@ export class RestaurantsService {
   }
 
   async findById(id: string): Promise<RestaurantResponseDto> {
-    const restaurant = await this.restaurantRepository.findOne({ where: { id } });
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id },
+    });
     if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
@@ -121,33 +132,47 @@ export class RestaurantsService {
   }
 
   async ensureApproved(id: string): Promise<RestaurantResponseDto> {
-    const restaurant = await this.restaurantRepository.findOne({ where: { id } });
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id },
+    });
     if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
 
     if (restaurant.status !== RestaurantStatus.APPROVED) {
-      throw new BadRequestException('Заведение недоступно для регистрации гостей');
+      throw new BadRequestException(
+        'Заведение недоступно для регистрации гостей',
+      );
     }
 
     return this.toResponse(restaurant);
   }
 
-  async update(id: string, dto: UpdateRestaurantDto): Promise<RestaurantResponseDto> {
-    const restaurant = await this.restaurantRepository.findOne({ where: { id } });
+  async update(
+    id: string,
+    dto: UpdateRestaurantDto,
+  ): Promise<RestaurantResponseDto> {
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id },
+    });
     if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
 
     if (dto.name) restaurant.name = sanitizeText(dto.name);
     if (dto.description !== undefined) {
-      restaurant.description = dto.description ? sanitizeText(dto.description) : null;
+      restaurant.description = dto.description
+        ? sanitizeText(dto.description)
+        : null;
     }
     if (dto.address) restaurant.address = sanitizeText(dto.address);
 
     if (dto.customDomain !== undefined) {
       const previousDomain = restaurant.customDomain;
-      const nextDomain = await this.resolveCustomDomainUpdate(id, dto.customDomain);
+      const nextDomain = await this.resolveCustomDomainUpdate(
+        id,
+        dto.customDomain,
+      );
       restaurant.customDomain = nextDomain;
       await this.invalidateDomainCache(previousDomain, nextDomain);
     }
@@ -167,21 +192,23 @@ export class RestaurantsService {
   }
 
   async remove(id: string): Promise<void> {
-    const restaurant = await this.restaurantRepository.findOne({ where: { id } });
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id },
+    });
     if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
 
     if (restaurant.customDomain) {
-      await this.cacheService.del(CacheKeys.restaurantByDomain(restaurant.customDomain));
+      await this.cacheService.del(
+        CacheKeys.restaurantByDomain(restaurant.customDomain),
+      );
     }
 
     await this.restaurantRepository.delete({ id });
   }
 
-  async findRegistrationByApplicant(
-    applicantId: string,
-  ): Promise<{
+  async findRegistrationByApplicant(applicantId: string): Promise<{
     id: string;
     name: string;
     status: RestaurantStatus;
@@ -213,7 +240,9 @@ export class RestaurantsService {
     });
   }
 
-  async reviewRegistration(dto: ReviewRegistrationDto): Promise<RestaurantResponseDto | RestaurantRegistrationRequest> {
+  async reviewRegistration(
+    dto: ReviewRegistrationDto,
+  ): Promise<RestaurantResponseDto | RestaurantRegistrationRequest> {
     const request = await this.registrationRepository.findOne({
       where: { id: dto.requestId },
     });
@@ -277,7 +306,10 @@ export class RestaurantsService {
     return this.toResponse(saved);
   }
 
-  async createByAdmin(dto: CreateRestaurantDto, ownerId: string): Promise<RestaurantResponseDto> {
+  async createByAdmin(
+    dto: CreateRestaurantDto,
+    ownerId: string,
+  ): Promise<RestaurantResponseDto> {
     const restaurant = this.restaurantRepository.create({
       name: sanitizeText(dto.name),
       description: dto.description ? sanitizeText(dto.description) : null,

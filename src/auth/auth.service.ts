@@ -9,7 +9,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
-import { TELEGRAM_OTP_PROVIDER, USERS_SERVICE } from '../common/constants/injection-tokens';
+import {
+  TELEGRAM_OTP_PROVIDER,
+  USERS_SERVICE,
+} from '../common/constants/injection-tokens';
 import {
   getPhoneCountry,
   InvalidPhoneError,
@@ -64,7 +67,10 @@ export class AuthService {
     private readonly smsRouter: SmsRouterService,
     private readonly configService: ConfigService,
   ) {
-    this.telegramWaitMs = this.configService.get<number>('otp.telegramWaitMs', 20_000);
+    this.telegramWaitMs = this.configService.get<number>(
+      'otp.telegramWaitMs',
+      20_000,
+    );
   }
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -74,7 +80,10 @@ export class AuthService {
       passwordHash,
     );
 
-    this.eventEmitter.emit('user.created', new UserCreatedEvent(user.id, user.email));
+    this.eventEmitter.emit(
+      'user.created',
+      new UserCreatedEvent(user.id, user.email),
+    );
 
     return this.buildAuthResponse(user);
   }
@@ -86,7 +95,9 @@ export class AuthService {
     }
 
     if (!user.passwordHash) {
-      throw new UnauthorizedException('Для этого аккаунта используйте вход через Google');
+      throw new UnauthorizedException(
+        'Для этого аккаунта используйте вход через Google',
+      );
     }
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -103,12 +114,19 @@ export class AuthService {
   }
 
   async loginWithGoogle(dto: GoogleAuthDto): Promise<AuthResponseDto> {
-    const googleProfile = await this.googleTokenService.verifyIdToken(dto.idToken);
-    const existing = await this.usersService.findByGoogleId(googleProfile.googleId);
+    const googleProfile = await this.googleTokenService.verifyIdToken(
+      dto.idToken,
+    );
+    const existing = await this.usersService.findByGoogleId(
+      googleProfile.googleId,
+    );
     const user = await this.usersService.findOrCreateFromGoogle(googleProfile);
 
     if (!existing) {
-      this.eventEmitter.emit('user.created', new UserCreatedEvent(user.id, user.email));
+      this.eventEmitter.emit(
+        'user.created',
+        new UserCreatedEvent(user.id, user.email),
+      );
     }
 
     return this.buildAuthResponse(user);
@@ -134,7 +152,10 @@ export class AuthService {
     if (sendCount === 1) {
       const tg = await this.telegramOtp.sendCode(phoneE164, code);
       if (tg.ok && tg.requestId) {
-        const delivery = await this.telegramOtp.waitForDelivery(tg.requestId, this.telegramWaitMs);
+        const delivery = await this.telegramOtp.waitForDelivery(
+          tg.requestId,
+          this.telegramWaitMs,
+        );
         if (delivery.delivered) {
           channel = 'telegram';
           telegramRequestId = tg.requestId;
@@ -156,7 +177,9 @@ export class AuthService {
     if (channel !== 'telegram') {
       const sms = await this.smsRouter.sendOtp(phone, code);
       if (!sms.ok) {
-        throw new ServiceUnavailableException('Не удалось отправить код. Попробуйте позже');
+        throw new ServiceUnavailableException(
+          'Не удалось отправить код. Попробуйте позже',
+        );
       }
       channel = sms.provider === 'dev' ? 'dev' : 'sms';
       this.logger.log(
@@ -198,7 +221,9 @@ export class AuthService {
     // Повторная отправка — сразу SMS, без Telegram.
     const sms = await this.smsRouter.sendOtp(phone, code);
     if (!sms.ok) {
-      throw new ServiceUnavailableException('Не удалось отправить код. Попробуйте позже');
+      throw new ServiceUnavailableException(
+        'Не удалось отправить код. Попробуйте позже',
+      );
     }
 
     const channel = sms.provider === 'dev' ? 'dev' : 'sms';
@@ -229,22 +254,36 @@ export class AuthService {
     dto: GuestOtpVerifyDto,
   ): Promise<GuestOtpVerifyResponseDto> {
     const phone = this.parseGuestPhone(dto.phone);
-    const record = await this.otpStore.verifyCode(restaurantId, phone, dto.code.trim());
+    const record = await this.otpStore.verifyCode(
+      restaurantId,
+      phone,
+      dto.code.trim(),
+    );
 
     if (record.telegramRequestId) {
-      void this.telegramOtp.reportCodeChecked(record.telegramRequestId, dto.code.trim());
+      void this.telegramOtp.reportCodeChecked(
+        record.telegramRequestId,
+        dto.code.trim(),
+      );
     }
 
     await this.otpStore.delete(restaurantId, phone);
 
-    const existing = await this.usersService.findGuestByPhoneAndRestaurant(phone, restaurantId);
+    const existing = await this.usersService.findGuestByPhoneAndRestaurant(
+      phone,
+      restaurantId,
+    );
     if (existing) {
       const profile = await this.usersService.findById(existing.id);
       if (!profile) {
         throw new UnauthorizedException('Пользователь не найден');
       }
       const auth = this.buildAuthResponse(profile);
-      return { status: 'authenticated', accessToken: auth.accessToken, user: auth.user };
+      return {
+        status: 'authenticated',
+        accessToken: auth.accessToken,
+        user: auth.user,
+      };
     }
 
     const registrationToken = this.jwtService.sign(
@@ -269,9 +308,13 @@ export class AuthService {
   ): Promise<AuthResponseDto> {
     let payload: GuestRegistrationTokenPayload;
     try {
-      payload = this.jwtService.verify<GuestRegistrationTokenPayload>(dto.registrationToken);
+      payload = this.jwtService.verify<GuestRegistrationTokenPayload>(
+        dto.registrationToken,
+      );
     } catch {
-      throw new UnauthorizedException('Сессия регистрации истекла. Подтвердите номер снова');
+      throw new UnauthorizedException(
+        'Сессия регистрации истекла. Подтвердите номер снова',
+      );
     }
 
     if (payload.typ !== 'guest_reg' || payload.restaurantId !== restaurantId) {
@@ -283,7 +326,10 @@ export class AuthService {
       throw new BadRequestException('Некорректный номер телефона');
     }
 
-    const existing = await this.usersService.findGuestByPhoneAndRestaurant(phone, restaurantId);
+    const existing = await this.usersService.findGuestByPhoneAndRestaurant(
+      phone,
+      restaurantId,
+    );
     if (existing) {
       const profile = await this.usersService.findById(existing.id);
       if (!profile) {
@@ -301,12 +347,20 @@ export class AuthService {
       restaurantId,
     );
 
-    this.eventEmitter.emit('user.created', new UserCreatedEvent(user.id, user.email));
+    this.eventEmitter.emit(
+      'user.created',
+      new UserCreatedEvent(user.id, user.email),
+    );
     return this.buildAuthResponse(user);
   }
 
   private buildAuthResponse(user: UserResponseDto): AuthResponseDto {
-    const payload: { sub: string; email: string; role: string; restaurantId?: string } = {
+    const payload: {
+      sub: string;
+      email: string;
+      role: string;
+      restaurantId?: string;
+    } = {
       sub: user.id,
       email: user.email,
       role: user.role,

@@ -49,7 +49,10 @@ export class GoogleTokenService {
         googleId: payload.sub,
         email: payload.email.toLowerCase(),
         firstName: payload.given_name ?? payload.name?.split(' ')[0] ?? 'User',
-        lastName: payload.family_name ?? payload.name?.split(' ').slice(1).join(' ') ?? '',
+        lastName:
+          payload.family_name ??
+          payload.name?.split(' ').slice(1).join(' ') ??
+          '',
       };
     } catch (error) {
       if (error instanceof UnauthorizedException) {

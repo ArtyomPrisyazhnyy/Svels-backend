@@ -36,7 +36,9 @@ export class NextRevalidationService {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown error';
-      this.logger.warn(`Next.js revalidation error for ${restaurantId}: ${message}`);
+      this.logger.warn(
+        `Next.js revalidation error for ${restaurantId}: ${message}`,
+      );
     }
   }
 }

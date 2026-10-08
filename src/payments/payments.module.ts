@@ -9,7 +9,10 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, PreOrder]), PaymentSettingsModule],
+  imports: [
+    TypeOrmModule.forFeature([Payment, PreOrder]),
+    PaymentSettingsModule,
+  ],
   controllers: [PaymentsController],
   providers: [PaymentsService, BePaidApiClient, RestaurantAccessGuard],
   exports: [PaymentsService, BePaidApiClient],

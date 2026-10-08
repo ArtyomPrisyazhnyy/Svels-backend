@@ -12,7 +12,9 @@ describe('inferCityFromAddress', () => {
 
 describe('formatLocationLine', () => {
   it('prefixes city when it is not already in the address', () => {
-    expect(formatLocationLine('Минск', 'ул. Ленина 1')).toBe('Минск, ул. Ленина 1');
+    expect(formatLocationLine('Минск', 'ул. Ленина 1')).toBe(
+      'Минск, ул. Ленина 1',
+    );
   });
 
   it('does not duplicate city', () => {

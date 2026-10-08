@@ -2,9 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MessageEvent } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { PendingRegistrationDto } from '../../shared/dto/pending-registration.dto';
-import {
-  RegistrationStreamMessage,
-} from '../dto/registration-stream-message.dto';
+import { RegistrationStreamMessage } from '../dto/registration-stream-message.dto';
 import { IRegistrationNotificationPublisher } from '../interfaces/registration-notification-publisher.interface';
 
 type StreamSubscriber = (message: RegistrationStreamMessage) => void;

@@ -35,8 +35,12 @@ describe('LeadTelegramNotifierService helpers', () => {
       createdAt: new Date('2026-01-01T12:00:00.000Z'),
     } satisfies LandingLead;
 
-    expect(buildLeadTelegramMessage(lead)).toContain('<b>Имя:</b> Иван &lt;script&gt;');
-    expect(buildLeadTelegramMessage(lead)).toContain('<b>Связаться через:</b> WhatsApp');
+    expect(buildLeadTelegramMessage(lead)).toContain(
+      '<b>Имя:</b> Иван &lt;script&gt;',
+    );
+    expect(buildLeadTelegramMessage(lead)).toContain(
+      '<b>Связаться через:</b> WhatsApp',
+    );
     expect(buildLeadTelegramMessage(lead)).toContain(
       '<b>Комментарий:</b> Нужен домен &amp; приложение',
     );

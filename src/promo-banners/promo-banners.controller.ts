@@ -19,7 +19,10 @@ import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard'
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { MediaUploadService } from '../media/media-upload.service';
-import { CreatePromoBannerDto, UpdatePromoBannerDto } from './dto/promo-banner.dto';
+import {
+  CreatePromoBannerDto,
+  UpdatePromoBannerDto,
+} from './dto/promo-banner.dto';
 import { PromoBannersService } from './promo-banners.service';
 
 @Controller('restaurants/:restaurantId/promo-banners')
@@ -37,7 +40,9 @@ export class PromoBannersController {
 
   /** Только активные — для публичной страницы. */
   @Get('active')
-  getActiveBanners(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
+  getActiveBanners(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+  ) {
     return this.promoBannersService.getActiveByRestaurant(restaurantId);
   }
 

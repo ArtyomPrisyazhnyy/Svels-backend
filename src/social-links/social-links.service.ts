@@ -3,9 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
-import { CreateSocialLinkDto, SocialLinkResponseDto, UpdateSocialLinkDto } from './dto/social-link.dto';
+import {
+  CreateSocialLinkDto,
+  SocialLinkResponseDto,
+  UpdateSocialLinkDto,
+} from './dto/social-link.dto';
 import { RestaurantSocialLink } from './entities/restaurant-social-link.entity';
-import { detectSocialPlatform, normalizeSocialUrl } from './utils/social-link.util';
+import {
+  detectSocialPlatform,
+  normalizeSocialUrl,
+} from './utils/social-link.util';
 
 @Injectable()
 export class SocialLinksService {
@@ -15,7 +22,9 @@ export class SocialLinksService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<SocialLinkResponseDto[]> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<SocialLinkResponseDto[]> {
     const links = await this.linkRepository.find({
       where: { restaurantId },
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
@@ -24,7 +33,10 @@ export class SocialLinksService {
     return links.map((link) => this.toResponse(link));
   }
 
-  async create(restaurantId: string, dto: CreateSocialLinkDto): Promise<SocialLinkResponseDto> {
+  async create(
+    restaurantId: string,
+    dto: CreateSocialLinkDto,
+  ): Promise<SocialLinkResponseDto> {
     const url = normalizeSocialUrl(dto.url);
     const link = this.linkRepository.create({
       restaurantId,
@@ -35,7 +47,9 @@ export class SocialLinksService {
     });
 
     const saved = await this.linkRepository.save(link);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
     return this.toResponse(saved);
   }
 
@@ -61,14 +75,18 @@ export class SocialLinksService {
     }
 
     const saved = await this.linkRepository.save(link);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
     return this.toResponse(saved);
   }
 
   async remove(restaurantId: string, linkId: string): Promise<void> {
     const link = await this.findOwnedLink(restaurantId, linkId);
     await this.linkRepository.remove(link);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
   }
 
   private async findOwnedLink(

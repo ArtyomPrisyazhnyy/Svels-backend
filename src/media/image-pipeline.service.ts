@@ -15,7 +15,10 @@ export class ImagePipelineService {
     keyPrefix: string;
     mimeType: string;
   }): Promise<ImageProcessJobResult> {
-    const variants = await this.conversionService.convert(params.buffer, params.mimeType);
+    const variants = await this.conversionService.convert(
+      params.buffer,
+      params.mimeType,
+    );
 
     const fallbackKey = `${params.keyPrefix}${variants.fallbackExtension}`;
     const webpKey = `${params.keyPrefix}.webp`;

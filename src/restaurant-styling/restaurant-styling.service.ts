@@ -16,7 +16,9 @@ export class RestaurantStylingService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<RestaurantStylingResponseDto> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<RestaurantStylingResponseDto> {
     const styling = await this.findOrCreate(restaurantId);
     return this.toResponse(styling);
   }
@@ -68,12 +70,16 @@ export class RestaurantStylingService {
     }
 
     const saved = await this.stylingRepository.save(styling);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
     return this.toResponse(saved);
   }
 
   private async findOrCreate(restaurantId: string): Promise<RestaurantStyling> {
-    const existing = await this.stylingRepository.findOne({ where: { restaurantId } });
+    const existing = await this.stylingRepository.findOne({
+      where: { restaurantId },
+    });
     if (existing) {
       return existing;
     }

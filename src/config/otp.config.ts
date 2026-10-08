@@ -5,11 +5,13 @@ export default () => ({
     telegramWaitMs: parseInt(process.env.OTP_TELEGRAM_WAIT_MS ?? '20000', 10),
     codeLength: parseInt(process.env.OTP_CODE_LENGTH ?? '6', 10),
     maxVerifyAttempts: parseInt(process.env.OTP_MAX_VERIFY_ATTEMPTS ?? '5', 10),
-    pepper: process.env.OTP_PEPPER ?? process.env.JWT_SECRET ?? 'otp-dev-pepper',
+    pepper:
+      process.env.OTP_PEPPER ?? process.env.JWT_SECRET ?? 'otp-dev-pepper',
   },
   telegramGateway: {
     token: process.env.TELEGRAM_GATEWAY_TOKEN ?? '',
-    apiUrl: process.env.TELEGRAM_GATEWAY_API_URL ?? 'https://gatewayapi.telegram.org',
+    apiUrl:
+      process.env.TELEGRAM_GATEWAY_API_URL ?? 'https://gatewayapi.telegram.org',
   },
   smsBy: {
     token: process.env.SMS_BY_TOKEN ?? '',

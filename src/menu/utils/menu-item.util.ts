@@ -2,10 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ModifierSelectionType } from '../../common/enums/modifier-selection-type.enum';
 import { generateUuidV7, isUuidV7 } from '../../common/utils/uuid.util';
 import { sanitizeText } from '../../common/utils/sanitize.util';
-import {
-  MenuItemNutritionDto,
-  MenuModifierGroupDto,
-} from '../dto/menu.dto';
+import { MenuItemNutritionDto, MenuModifierGroupDto } from '../dto/menu.dto';
 import type {
   MenuItemNutrition,
   MenuModifierGroup,

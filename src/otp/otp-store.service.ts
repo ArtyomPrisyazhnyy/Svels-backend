@@ -29,10 +29,19 @@ export class OtpStoreService {
     private readonly configService: ConfigService,
   ) {
     this.ttlSeconds = this.configService.get<number>('otp.ttlSeconds', 300);
-    this.resendSeconds = this.configService.get<number>('otp.resendSeconds', 60);
+    this.resendSeconds = this.configService.get<number>(
+      'otp.resendSeconds',
+      60,
+    );
     this.codeLength = this.configService.get<number>('otp.codeLength', 6);
-    this.maxVerifyAttempts = this.configService.get<number>('otp.maxVerifyAttempts', 5);
-    this.pepper = this.configService.get<string>('otp.pepper', 'otp-dev-pepper');
+    this.maxVerifyAttempts = this.configService.get<number>(
+      'otp.maxVerifyAttempts',
+      5,
+    );
+    this.pepper = this.configService.get<string>(
+      'otp.pepper',
+      'otp-dev-pepper',
+    );
   }
 
   getTtlSeconds(): number {
@@ -55,11 +64,18 @@ export class OtpStoreService {
       .digest('hex');
   }
 
-  async get(restaurantId: string, phone: string): Promise<GuestOtpRecord | null> {
+  async get(
+    restaurantId: string,
+    phone: string,
+  ): Promise<GuestOtpRecord | null> {
     try {
-      return await this.cache.getRequired<GuestOtpRecord>(CacheKeys.guestOtp(restaurantId, phone));
+      return await this.cache.getRequired<GuestOtpRecord>(
+        CacheKeys.guestOtp(restaurantId, phone),
+      );
     } catch {
-      throw new ServiceUnavailableException('Сервис подтверждения временно недоступен');
+      throw new ServiceUnavailableException(
+        'Сервис подтверждения временно недоступен',
+      );
     }
   }
 
@@ -69,9 +85,15 @@ export class OtpStoreService {
       Math.ceil((new Date(record.expiresAt).getTime() - Date.now()) / 1000),
     );
     try {
-      await this.cache.setRequired(CacheKeys.guestOtp(record.restaurantId, record.phone), record, ttl);
+      await this.cache.setRequired(
+        CacheKeys.guestOtp(record.restaurantId, record.phone),
+        record,
+        ttl,
+      );
     } catch {
-      throw new ServiceUnavailableException('Сервис подтверждения временно недоступен');
+      throw new ServiceUnavailableException(
+        'Сервис подтверждения временно недоступен',
+      );
     }
   }
 
@@ -79,7 +101,9 @@ export class OtpStoreService {
     try {
       await this.cache.delRequired(CacheKeys.guestOtp(restaurantId, phone));
     } catch {
-      throw new ServiceUnavailableException('Сервис подтверждения временно недоступен');
+      throw new ServiceUnavailableException(
+        'Сервис подтверждения временно недоступен',
+      );
     }
   }
 
@@ -110,7 +134,9 @@ export class OtpStoreService {
       restaurantId: params.restaurantId,
       channel: params.channel,
       createdAt: new Date(now).toISOString(),
-      resendAvailableAt: new Date(now + this.resendSeconds * 1000).toISOString(),
+      resendAvailableAt: new Date(
+        now + this.resendSeconds * 1000,
+      ).toISOString(),
       expiresAt: new Date(now + this.ttlSeconds * 1000).toISOString(),
       verifyAttempts: 0,
       sendCount: params.sendCount,
@@ -135,7 +161,9 @@ export class OtpStoreService {
 
     const record = await this.get(restaurantId, phone);
     if (!record) {
-      throw new UnauthorizedException('Код не найден или истёк. Запросите новый');
+      throw new UnauthorizedException(
+        'Код не найден или истёк. Запросите новый',
+      );
     }
 
     if (new Date(record.expiresAt).getTime() < Date.now()) {
@@ -149,7 +177,10 @@ export class OtpStoreService {
     }
 
     const expected = Buffer.from(record.codeHash, 'utf8');
-    const actual = Buffer.from(this.hashCode(code, restaurantId, phone), 'utf8');
+    const actual = Buffer.from(
+      this.hashCode(code, restaurantId, phone),
+      'utf8',
+    );
     const match =
       expected.length === actual.length && timingSafeEqual(expected, actual);
 

@@ -24,7 +24,10 @@ const OWNER_ONLY_PERMISSIONS = new Set<RestaurantPermission>([
   RestaurantPermission.MANAGE_STAFF,
 ]);
 
-export const ROLE_PERMISSIONS: Record<RestaurantStaffRole, readonly RestaurantPermission[]> = {
+export const ROLE_PERMISSIONS: Record<
+  RestaurantStaffRole,
+  readonly RestaurantPermission[]
+> = {
   [UserRole.RESTAURANT_ADMIN]: ALL_PERMISSIONS,
   [UserRole.RESTAURANT_MANAGER]: ALL_PERMISSIONS.filter(
     (permission) => !OWNER_ONLY_PERMISSIONS.has(permission),
@@ -36,7 +39,9 @@ export const ROLE_PERMISSIONS: Record<RestaurantStaffRole, readonly RestaurantPe
   [UserRole.RESTAURANT_PRODUCTION]: [RestaurantPermission.VIEW_ORDERS],
 };
 
-export function isRestaurantStaffRole(role: string): role is RestaurantStaffRole {
+export function isRestaurantStaffRole(
+  role: string,
+): role is RestaurantStaffRole {
   return (RESTAURANT_STAFF_ROLES as readonly string[]).includes(role);
 }
 

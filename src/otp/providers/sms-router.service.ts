@@ -4,8 +4,14 @@ import {
   SMS_BY_PROVIDER,
   SMSC_PROVIDER,
 } from '../../common/constants/injection-tokens';
-import { getPhoneCountry, type PhoneCountry } from '../../common/utils/normalize-phone.util';
-import type { ISmsProvider, SmsSendResult } from '../interfaces/sms-provider.interface';
+import {
+  getPhoneCountry,
+  type PhoneCountry,
+} from '../../common/utils/normalize-phone.util';
+import type {
+  ISmsProvider,
+  SmsSendResult,
+} from '../interfaces/sms-provider.interface';
 import { DevSmsProvider } from './dev-sms.provider';
 
 @Injectable()

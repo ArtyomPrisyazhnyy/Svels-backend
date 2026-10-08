@@ -6,7 +6,9 @@ export default () => ({
       accessKeyId: process.env.YANDEX_STORAGE_ACCESS_KEY_ID ?? '',
       secretAccessKey: process.env.YANDEX_STORAGE_SECRET_ACCESS_KEY ?? '',
       region: process.env.YANDEX_STORAGE_REGION ?? 'ru-central1',
-      endpoint: process.env.YANDEX_STORAGE_ENDPOINT ?? 'https://storage.yandexcloud.net',
+      endpoint:
+        process.env.YANDEX_STORAGE_ENDPOINT ??
+        'https://storage.yandexcloud.net',
       /**
        * Публичный базовый URL без завершающего слэша.
        * Пример: https://storage.yandexcloud.net/my-bucket

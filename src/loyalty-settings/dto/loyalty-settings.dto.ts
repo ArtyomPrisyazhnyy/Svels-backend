@@ -40,18 +40,24 @@ export class LoyaltyRewardDto {
   @MaxLength(500)
   description?: string | null;
 
-  @ValidateIf((o: LoyaltyRewardDto) => o.type === LoyaltyRewardType.PERCENT_DISCOUNT)
+  @ValidateIf(
+    (o: LoyaltyRewardDto) => o.type === LoyaltyRewardType.PERCENT_DISCOUNT,
+  )
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
   @Max(100)
   percentOff?: number | null;
 
-  @ValidateIf((o: LoyaltyRewardDto) => o.type === LoyaltyRewardType.FIXED_DISCOUNT)
+  @ValidateIf(
+    (o: LoyaltyRewardDto) => o.type === LoyaltyRewardType.FIXED_DISCOUNT,
+  )
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0.01)
   amountOff?: number | null;
 
-  @ValidateIf((o: LoyaltyRewardDto) => o.type === LoyaltyRewardType.FREE_MENU_ITEM)
+  @ValidateIf(
+    (o: LoyaltyRewardDto) => o.type === LoyaltyRewardType.FREE_MENU_ITEM,
+  )
   @IsUuidV7()
   menuItemId?: string | null;
 

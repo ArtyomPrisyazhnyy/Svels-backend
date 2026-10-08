@@ -7,7 +7,9 @@ export function normalizeSocialUrl(input: string): string {
     throw new BadRequestException('Укажите ссылку');
   }
 
-  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
 
   let parsed: URL;
   try {
@@ -25,9 +27,15 @@ export function normalizeSocialUrl(input: string): string {
 
 export function detectSocialPlatform(url: string): SocialPlatform {
   try {
-    const hostname = new URL(normalizeSocialUrl(url)).hostname.replace(/^www\./i, '').toLowerCase();
+    const hostname = new URL(normalizeSocialUrl(url)).hostname
+      .replace(/^www\./i, '')
+      .toLowerCase();
 
-    if (hostname === 't.me' || hostname === 'telegram.me' || hostname.endsWith('.t.me')) {
+    if (
+      hostname === 't.me' ||
+      hostname === 'telegram.me' ||
+      hostname.endsWith('.t.me')
+    ) {
       return SocialPlatform.TELEGRAM;
     }
     if (hostname === 'instagram.com' || hostname.endsWith('.instagram.com')) {

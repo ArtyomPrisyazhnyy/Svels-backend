@@ -15,7 +15,10 @@ import { RestaurantPermission } from '../common/enums/restaurant-permission.enum
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { CreateSocialLinkDto, UpdateSocialLinkDto } from './dto/social-link.dto';
+import {
+  CreateSocialLinkDto,
+  UpdateSocialLinkDto,
+} from './dto/social-link.dto';
 import { SocialLinksService } from './social-links.service';
 
 @Controller('restaurants/:restaurantId/social-links')

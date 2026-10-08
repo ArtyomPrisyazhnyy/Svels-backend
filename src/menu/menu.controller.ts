@@ -18,7 +18,11 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { MediaUploadService } from '../media/media-upload.service';
-import { CreateMenuCategoryDto, CreateMenuItemDto, UpdateMenuItemDto } from './dto/menu.dto';
+import {
+  CreateMenuCategoryDto,
+  CreateMenuItemDto,
+  UpdateMenuItemDto,
+} from './dto/menu.dto';
 import { MenuService } from './menu.service';
 
 @Controller('restaurants/:restaurantId/menu')

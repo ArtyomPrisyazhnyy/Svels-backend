@@ -1,4 +1,7 @@
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { LandingLead } from './entities/landing-lead.entity';
 import { LeadTelegramNotifierService } from './lead-telegram-notifier.service';
@@ -17,8 +20,12 @@ describe('LeadsService', () => {
     createdAt: new Date('2026-01-01T12:00:00.000Z'),
   };
 
-  let leadRepository: jest.Mocked<Pick<Repository<LandingLead>, 'create' | 'save'>>;
-  let leadTelegramNotifier: jest.Mocked<Pick<LeadTelegramNotifierService, 'notifyLead'>>;
+  let leadRepository: jest.Mocked<
+    Pick<Repository<LandingLead>, 'create' | 'save'>
+  >;
+  let leadTelegramNotifier: jest.Mocked<
+    Pick<LeadTelegramNotifierService, 'notifyLead'>
+  >;
   let service: LeadsService;
 
   beforeEach(() => {

@@ -39,7 +39,11 @@ export class RestaurantRegistrationRequest {
   @JoinColumn({ name: 'applicantId' })
   applicant?: unknown;
 
-  @Column({ type: 'enum', enum: RestaurantStatus, default: RestaurantStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: RestaurantStatus,
+    default: RestaurantStatus.PENDING,
+  })
   status: RestaurantStatus;
 
   @Column({ type: 'text', nullable: true })

@@ -35,7 +35,9 @@ export class FloorPlansController {
   /** Публичная планировка для гостя (только visibleToGuests + isActive столы). Cache-Aside. */
   @Get('public')
   @Throttle({ default: { limit: 120, ttl: 60000 } })
-  getPublicLayout(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
+  getPublicLayout(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+  ) {
     return this.floorPlansService.getPublicLayout(restaurantId);
   }
 
@@ -66,7 +68,11 @@ export class FloorPlansController {
     @Param('floorPlanId', ParseUuidV7Pipe) floorPlanId: string,
     @Body() dto: UpdateFloorPlanDto,
   ) {
-    return this.floorPlansService.updateFloorPlan(restaurantId, floorPlanId, dto);
+    return this.floorPlansService.updateFloorPlan(
+      restaurantId,
+      floorPlanId,
+      dto,
+    );
   }
 
   @Delete(':floorPlanId')

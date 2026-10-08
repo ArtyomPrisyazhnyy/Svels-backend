@@ -22,7 +22,10 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
       .replace(/\/$/, '');
 
     this.client = new S3Client({
-      region: this.configService.get<string>('storage.yandex.region', 'ru-central1'),
+      region: this.configService.get<string>(
+        'storage.yandex.region',
+        'ru-central1',
+      ),
       endpoint: this.configService.get<string>(
         'storage.yandex.endpoint',
         'https://storage.yandexcloud.net',

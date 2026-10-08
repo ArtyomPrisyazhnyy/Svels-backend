@@ -3,11 +3,17 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
-import { BOOKING_SETTINGS_SERVICE, FLOOR_PLANS_SERVICE } from '../common/constants/injection-tokens';
+import {
+  BOOKING_SETTINGS_SERVICE,
+  FLOOR_PLANS_SERVICE,
+} from '../common/constants/injection-tokens';
 import { BookingMode } from '../common/enums/booking-mode.enum';
 import { DepositScheme } from '../common/enums/deposit-scheme.enum';
 import { CacheService } from '../cache/cache.service';
-import type { BookingSettingsSnapshot, BookingSettingsService } from '../booking-settings/booking-settings.service';
+import type {
+  BookingSettingsSnapshot,
+  BookingSettingsService,
+} from '../booking-settings/booking-settings.service';
 import { BookingsService } from './bookings.service';
 import { Booking } from './entities/booking.entity';
 import type { Table } from '../floor-plans/entities/table.entity';
@@ -53,13 +59,24 @@ const TABLE: Partial<Table> = {
 };
 
 function futureDate(offsetDays = 1): string {
-  return new Date(Date.now() + offsetDays * 86_400_000).toISOString().slice(0, 10);
+  return new Date(Date.now() + offsetDays * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 /** Fluent-builder мок для createQueryBuilder. `terminal` — итог getOne/getMany. */
-function qbMock<T>(terminal: () => Promise<T>): Record<string, (...args: unknown[]) => unknown> {
+function qbMock<T>(
+  terminal: () => Promise<T>,
+): Record<string, (...args: unknown[]) => unknown> {
   const chain: Record<string, (...args: unknown[]) => unknown> = {};
-  const methods = ['setLock', 'where', 'andWhere', 'select', 'orderBy', 'limit'];
+  const methods = [
+    'setLock',
+    'where',
+    'andWhere',
+    'select',
+    'orderBy',
+    'limit',
+  ];
   for (const m of methods) {
     chain[m] = jest.fn().mockReturnValue(chain);
   }
@@ -71,39 +88,68 @@ function qbMock<T>(terminal: () => Promise<T>): Record<string, (...args: unknown
 describe('BookingsService — race condition guards', () => {
   let service: BookingsService;
   let bookingRepo: { find: jest.Mock; createQueryBuilder: jest.Mock };
-  let floorPlansService: { findTableById: jest.Mock; findFloorPlanById: jest.Mock; getActiveTables: jest.Mock };
+  let floorPlansService: {
+    findTableById: jest.Mock;
+    findFloorPlanById: jest.Mock;
+    getActiveTables: jest.Mock;
+  };
   let bookingSettingsService: { getSnapshot: jest.Mock };
   let schedulesService: { getByRestaurant: jest.Mock };
-  let cacheService: { tryLock: jest.Mock; unlock: jest.Mock; del: jest.Mock; delMany: jest.Mock; get: jest.Mock; set: jest.Mock; delByPattern: jest.Mock };
+  let cacheService: {
+    tryLock: jest.Mock;
+    unlock: jest.Mock;
+    del: jest.Mock;
+    delMany: jest.Mock;
+    get: jest.Mock;
+    set: jest.Mock;
+    delByPattern: jest.Mock;
+  };
   let dataSource: { transaction: jest.Mock };
 
   /**
    * Конфигурируем мок транзакции: `overlapFound` определяет, найдена ли пересекающаяся бронь.
    */
   function configureTransaction(overlapFound: boolean): void {
-    dataSource.transaction.mockImplementation(async (_isolation: string, cb: (manager: unknown) => unknown) => {
-      const manager = {
-        getRepository: () => ({
-          createQueryBuilder: () => qbMock(async () => TABLE),
-        }),
-        createQueryBuilder: () => qbMock(async () => (overlapFound
-          ? { tableId: TABLE_ID, slotStart: new Date(), slotEnd: new Date() }
-          : null)),
-        create: (_entity: unknown, payload: Partial<Booking>) => ({ ...payload, id: 'new-booking-id' } as Booking),
-        save: async <T>(entity: T) => entity,
-      };
-      return cb(manager);
-    });
+    dataSource.transaction.mockImplementation(
+      async (_isolation: string, cb: (manager: unknown) => unknown) => {
+        const manager = {
+          getRepository: () => ({
+            createQueryBuilder: () => qbMock(async () => TABLE),
+          }),
+          createQueryBuilder: () =>
+            qbMock(async () =>
+              overlapFound
+                ? {
+                    tableId: TABLE_ID,
+                    slotStart: new Date(),
+                    slotEnd: new Date(),
+                  }
+                : null,
+            ),
+          create: (_entity: unknown, payload: Partial<Booking>) =>
+            ({ ...payload, id: 'new-booking-id' }) as Booking,
+          save: async <T>(entity: T) => entity,
+        };
+        return cb(manager);
+      },
+    );
   }
 
   beforeEach(async () => {
-    bookingRepo = { find: jest.fn().mockResolvedValue([]), createQueryBuilder: jest.fn().mockReturnValue(qbMock(async () => [])) };
+    bookingRepo = {
+      find: jest.fn().mockResolvedValue([]),
+      createQueryBuilder: jest.fn().mockReturnValue(qbMock(async () => [])),
+    };
     floorPlansService = {
       findTableById: jest.fn().mockResolvedValue(TABLE),
-      findFloorPlanById: jest.fn().mockResolvedValue({ id: FLOOR_PLAN_ID, depositAmount: 15 }),
+      findFloorPlanById: jest
+        .fn()
+        .mockResolvedValue({ id: FLOOR_PLAN_ID, depositAmount: 15 }),
       getActiveTables: jest.fn().mockResolvedValue([TABLE]),
     };
-    bookingSettingsService = { getSnapshot: jest.fn().mockResolvedValue(SETTINGS) };
+    bookingSettingsService = {
+      getSnapshot: jest.fn().mockResolvedValue(SETTINGS),
+    };
     schedulesService = { getByRestaurant: jest.fn().mockResolvedValue([]) };
     cacheService = {
       tryLock: jest.fn().mockResolvedValue('token-1'),
@@ -175,12 +221,17 @@ describe('BookingsService — race condition guards', () => {
     expect(result.tableId).toBe(TABLE_ID);
     expect(result.slotStart).toBeInstanceOf(Date);
     expect(result.slotEnd).toBeInstanceOf(Date);
-    expect(result.slotEnd.getTime() - result.slotStart.getTime()).toBe(120 * 60_000);
+    expect(result.slotEnd.getTime() - result.slotStart.getTime()).toBe(
+      120 * 60_000,
+    );
     expect(cacheService.unlock).toHaveBeenCalled();
   });
 
   it('бросает NotFoundException, если стол не принадлежит ресторану', async () => {
-    floorPlansService.findTableById.mockResolvedValue({ ...TABLE, restaurantId: 'other' });
+    floorPlansService.findTableById.mockResolvedValue({
+      ...TABLE,
+      restaurantId: 'other',
+    });
 
     await expect(
       service.create(RESTAURANT_ID, USER_ID, {
@@ -193,7 +244,10 @@ describe('BookingsService — race condition guards', () => {
   });
 
   it('бросает BadRequestException, если гостей меньше minCapacity стола', async () => {
-    floorPlansService.findTableById.mockResolvedValue({ ...TABLE, minCapacity: 3 });
+    floorPlansService.findTableById.mockResolvedValue({
+      ...TABLE,
+      minCapacity: 3,
+    });
 
     await expect(
       service.create(RESTAURANT_ID, USER_ID, {
@@ -215,12 +269,37 @@ describe('BookingsService — getTablesAvailability', () => {
         BookingsService,
         {
           provide: getRepositoryToken(Booking),
-          useValue: { createQueryBuilder: jest.fn().mockReturnValue(qbMock(async () => [])) },
+          useValue: {
+            createQueryBuilder: jest
+              .fn()
+              .mockReturnValue(qbMock(async () => [])),
+          },
         },
-        { provide: FLOOR_PLANS_SERVICE, useValue: { findTableById: jest.fn(), findFloorPlanById: jest.fn(), getActiveTables: jest.fn().mockResolvedValue([]) } },
-        { provide: BOOKING_SETTINGS_SERVICE, useValue: { getSnapshot: jest.fn().mockResolvedValue(SETTINGS) } },
+        {
+          provide: FLOOR_PLANS_SERVICE,
+          useValue: {
+            findTableById: jest.fn(),
+            findFloorPlanById: jest.fn(),
+            getActiveTables: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: BOOKING_SETTINGS_SERVICE,
+          useValue: { getSnapshot: jest.fn().mockResolvedValue(SETTINGS) },
+        },
         { provide: SchedulesService, useValue: { getByRestaurant: jest.fn() } },
-        { provide: CacheService, useValue: { tryLock: jest.fn(), unlock: jest.fn(), del: jest.fn(), delMany: jest.fn(), get: jest.fn(), set: jest.fn(), delByPattern: jest.fn() } },
+        {
+          provide: CacheService,
+          useValue: {
+            tryLock: jest.fn(),
+            unlock: jest.fn(),
+            del: jest.fn(),
+            delMany: jest.fn(),
+            get: jest.fn(),
+            set: jest.fn(),
+            delByPattern: jest.fn(),
+          },
+        },
         { provide: DataSource, useValue: { transaction: jest.fn() } },
       ],
     }).compile();
@@ -228,7 +307,11 @@ describe('BookingsService — getTablesAvailability', () => {
   });
 
   it('возвращает пустой список занятых столов при отсутствии броней', async () => {
-    const result = await service.getTablesAvailability(RESTAURANT_ID, futureDate(), '19:00');
+    const result = await service.getTablesAvailability(
+      RESTAURANT_ID,
+      futureDate(),
+      '19:00',
+    );
     expect(result.busy).toEqual([]);
     expect(result.durationMinutes).toBe(120);
   });

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
@@ -26,9 +30,12 @@ export class PromoBannersService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<PromoBannerResponseDto[]> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<PromoBannerResponseDto[]> {
     const cacheKey = CacheKeys.promoBanners(restaurantId);
-    const cached = await this.cacheService.get<PromoBannerResponseDto[]>(cacheKey);
+    const cached =
+      await this.cacheService.get<PromoBannerResponseDto[]>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -44,7 +51,9 @@ export class PromoBannersService {
   }
 
   /** Активные баннеры для публичной страницы (Cache-Aside через getByRestaurant). */
-  async getActiveByRestaurant(restaurantId: string): Promise<PromoBannerResponseDto[]> {
+  async getActiveByRestaurant(
+    restaurantId: string,
+  ): Promise<PromoBannerResponseDto[]> {
     const all = await this.getByRestaurant(restaurantId);
     return all.filter((banner) => banner.isActive);
   }
@@ -62,7 +71,10 @@ export class PromoBannersService {
       linkUrl: this.normalizeLinkUrl(dto.linkUrl),
       isActive: dto.isActive ?? true,
       sortOrder: dto.sortOrder ?? 0,
-      displayFrequency: this.resolveDisplayFrequency(dto.type, dto.displayFrequency),
+      displayFrequency: this.resolveDisplayFrequency(
+        dto.type,
+        dto.displayFrequency,
+      ),
       aspectRatio: this.resolveAspectRatio(dto.type, dto.aspectRatio),
     });
 
@@ -149,7 +161,9 @@ export class PromoBannersService {
 
   private async afterMutation(restaurantId: string): Promise<void> {
     await this.invalidateCache(restaurantId);
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
   }
 
   private async invalidateCache(restaurantId: string): Promise<void> {
@@ -209,7 +223,9 @@ export class PromoBannersService {
     try {
       const url = new URL(trimmed);
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw new BadRequestException('Ссылка баннера должна начинаться с http:// или https://');
+        throw new BadRequestException(
+          'Ссылка баннера должна начинаться с http:// или https://',
+        );
       }
       return url.toString();
     } catch (error) {

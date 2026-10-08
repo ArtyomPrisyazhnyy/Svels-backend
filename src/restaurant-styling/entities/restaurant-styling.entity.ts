@@ -1,4 +1,11 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { RestaurantButtonShape } from '../../common/enums/restaurant-styling.enum';
 import { RestaurantButtonVariant } from '../../common/enums/restaurant-styling.enum';
 import {

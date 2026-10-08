@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { ISmsProvider, SmsSendResult } from '../interfaces/sms-provider.interface';
+import type {
+  ISmsProvider,
+  SmsSendResult,
+} from '../interfaces/sms-provider.interface';
 
 @Injectable()
 export class SmscProvider implements ISmsProvider {
@@ -15,7 +18,10 @@ export class SmscProvider implements ISmsProvider {
     this.login = this.configService.get<string>('smsc.login', '');
     this.password = this.configService.get<string>('smsc.password', '');
     this.sender = this.configService.get<string>('smsc.sender', 'Svels');
-    this.apiUrl = this.configService.get<string>('smsc.apiUrl', 'https://smsc.ru/sys/send.php');
+    this.apiUrl = this.configService.get<string>(
+      'smsc.apiUrl',
+      'https://smsc.ru/sys/send.php',
+    );
   }
 
   async send(phoneE164: string, message: string): Promise<SmsSendResult> {

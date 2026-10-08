@@ -27,7 +27,11 @@ export class DevController {
   }
 
   @Get('last-otp')
-  getLastOtp(@Query('phone') phone?: string): { phone: string; code: string; at: string } {
+  getLastOtp(@Query('phone') phone?: string): {
+    phone: string;
+    code: string;
+    at: string;
+  } {
     this.assertNonProduction();
 
     if (!phone?.trim()) {

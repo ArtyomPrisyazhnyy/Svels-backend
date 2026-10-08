@@ -64,13 +64,15 @@ describe('OtpStoreService', () => {
     cache.getRequired.mockResolvedValue(record);
     cache.setRequired.mockResolvedValue(undefined);
 
-    await expect(store.verifyCode('r1', '375291234567', '000000')).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      store.verifyCode('r1', '375291234567', '000000'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(cache.setRequired).toHaveBeenCalled();
 
     cache.getRequired.mockResolvedValue({ ...record, verifyAttempts: 1 });
-    await expect(store.verifyCode('r1', '375291234567', '654321')).resolves.toMatchObject({
+    await expect(
+      store.verifyCode('r1', '375291234567', '654321'),
+    ).resolves.toMatchObject({
       phone: '375291234567',
       channel: 'telegram',
     });

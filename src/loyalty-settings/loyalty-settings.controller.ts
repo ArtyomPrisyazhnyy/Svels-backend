@@ -10,7 +10,9 @@ import { LoyaltySettingsService } from './loyalty-settings.service';
 
 @Controller('restaurants/:restaurantId/loyalty-settings')
 export class LoyaltySettingsController {
-  constructor(private readonly loyaltySettingsService: LoyaltySettingsService) {}
+  constructor(
+    private readonly loyaltySettingsService: LoyaltySettingsService,
+  ) {}
 
   @Get()
   getSettings(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {

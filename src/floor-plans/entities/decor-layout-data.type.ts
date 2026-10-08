@@ -110,7 +110,12 @@ export const DECOR_OBJECT_TYPES = [
   'decor-icon',
 ] as const;
 
-export const DECOR_SHAPE_KINDS = ['rect', 'circle', 'triangle', 'oval'] as const;
+export const DECOR_SHAPE_KINDS = [
+  'rect',
+  'circle',
+  'triangle',
+  'oval',
+] as const;
 
 export const DECOR_ICON_KINDS: readonly DecorIconKind[] = [
   'plant',

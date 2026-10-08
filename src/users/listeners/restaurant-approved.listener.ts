@@ -14,8 +14,12 @@ export class RestaurantApprovedListener {
   ) {}
 
   @OnEvent('restaurant.approved')
-  async handleRestaurantApproved(event: RestaurantApprovedEvent): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { id: event.ownerId } });
+  async handleRestaurantApproved(
+    event: RestaurantApprovedEvent,
+  ): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: event.ownerId },
+    });
     if (!user) {
       return;
     }

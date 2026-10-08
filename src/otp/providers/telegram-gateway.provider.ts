@@ -32,12 +32,16 @@ export class TelegramGatewayProvider implements ITelegramOtpProvider {
 
   async sendCode(phoneE164: string, code: string): Promise<TelegramSendResult> {
     if (!this.token) {
-      this.logger.debug('TELEGRAM_GATEWAY_TOKEN не задан — пропускаем Telegram');
+      this.logger.debug(
+        'TELEGRAM_GATEWAY_TOKEN не задан — пропускаем Telegram',
+      );
       return { ok: false, unavailable: true, error: 'TOKEN_MISSING' };
     }
 
     try {
-      const ability = await this.call('checkSendAbility', { phone_number: phoneE164 });
+      const ability = await this.call('checkSendAbility', {
+        phone_number: phoneE164,
+      });
       if (!ability.ok || !ability.result?.request_id) {
         return {
           ok: false,
@@ -71,7 +75,10 @@ export class TelegramGatewayProvider implements ITelegramOtpProvider {
     }
   }
 
-  async waitForDelivery(requestId: string, waitMs: number): Promise<TelegramDeliveryPollResult> {
+  async waitForDelivery(
+    requestId: string,
+    waitMs: number,
+  ): Promise<TelegramDeliveryPollResult> {
     if (!this.token || !requestId) {
       return { delivered: false };
     }
@@ -81,7 +88,9 @@ export class TelegramGatewayProvider implements ITelegramOtpProvider {
 
     while (Date.now() < deadline) {
       try {
-        const status = await this.call('checkVerificationStatus', { request_id: requestId });
+        const status = await this.call('checkVerificationStatus', {
+          request_id: requestId,
+        });
         lastStatus = status.result?.delivery_status?.status;
         if (lastStatus === 'delivered' || lastStatus === 'read') {
           return { delivered: true, status: lastStatus };
@@ -107,7 +116,10 @@ export class TelegramGatewayProvider implements ITelegramOtpProvider {
     }
 
     try {
-      await this.call('checkVerificationStatus', { request_id: requestId, code });
+      await this.call('checkVerificationStatus', {
+        request_id: requestId,
+        code,
+      });
     } catch (error) {
       this.logger.debug(
         `Telegram reportCodeChecked failed: ${error instanceof Error ? error.message : 'unknown'}`,
@@ -115,7 +127,10 @@ export class TelegramGatewayProvider implements ITelegramOtpProvider {
     }
   }
 
-  private async call(method: string, body: Record<string, unknown>): Promise<GatewayResponse> {
+  private async call(
+    method: string,
+    body: Record<string, unknown>,
+  ): Promise<GatewayResponse> {
     const response = await fetch(`${this.apiUrl}/${method}`, {
       method: 'POST',
       headers: {

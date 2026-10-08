@@ -32,7 +32,11 @@ export class MediaModule {
           MediaUploadService,
           { provide: getQueueToken(IMAGE_PROCESSING_QUEUE), useValue: null },
         ],
-        exports: [MediaUploadService, ImagePipelineService, ImageConversionService],
+        exports: [
+          MediaUploadService,
+          ImagePipelineService,
+          ImageConversionService,
+        ],
       };
     }
 
@@ -47,7 +51,8 @@ export class MediaModule {
             connection: {
               host: configService.get<string>('redis.host', 'localhost'),
               port: configService.get<number>('redis.port', 6379),
-              password: configService.get<string>('redis.password') || undefined,
+              password:
+                configService.get<string>('redis.password') || undefined,
               maxRetriesPerRequest: null,
             },
           }),
@@ -60,7 +65,11 @@ export class MediaModule {
         MediaUploadService,
         ...(registerProcessor ? [ImageProcessingProcessor] : []),
       ],
-      exports: [MediaUploadService, ImagePipelineService, ImageConversionService],
+      exports: [
+        MediaUploadService,
+        ImagePipelineService,
+        ImageConversionService,
+      ],
     };
   }
 }

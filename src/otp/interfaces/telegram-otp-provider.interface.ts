@@ -19,7 +19,10 @@ export interface ITelegramOtpProvider {
   sendCode(phoneE164: string, code: string): Promise<TelegramSendResult>;
 
   /** Поллит delivery_status до waitMs. */
-  waitForDelivery(requestId: string, waitMs: number): Promise<TelegramDeliveryPollResult>;
+  waitForDelivery(
+    requestId: string,
+    waitMs: number,
+  ): Promise<TelegramDeliveryPollResult>;
 
   /** Сообщает Gateway об успешной проверке кода (для статистики). */
   reportCodeChecked(requestId: string, code: string): Promise<void>;

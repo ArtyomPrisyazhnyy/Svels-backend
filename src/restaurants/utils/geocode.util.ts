@@ -28,7 +28,10 @@ export async function geocodeAddress(query: string): Promise<GeoPoint | null> {
       return null;
     }
 
-    const rows = (await response.json()) as Array<{ lat?: string; lon?: string }>;
+    const rows = (await response.json()) as Array<{
+      lat?: string;
+      lon?: string;
+    }>;
     const first = rows[0];
     if (!first?.lat || !first?.lon) {
       return null;

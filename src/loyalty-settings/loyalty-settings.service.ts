@@ -28,9 +28,12 @@ export class LoyaltySettingsService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(restaurantId: string): Promise<LoyaltySettingsResponseDto> {
+  async getByRestaurant(
+    restaurantId: string,
+  ): Promise<LoyaltySettingsResponseDto> {
     const cacheKey = CacheKeys.loyaltySettings(restaurantId);
-    const cached = await this.cacheService.get<LoyaltySettingsResponseDto>(cacheKey);
+    const cached =
+      await this.cacheService.get<LoyaltySettingsResponseDto>(cacheKey);
     if (cached) {
       return cached;
     }
@@ -75,12 +78,18 @@ export class LoyaltySettingsService {
 
     const saved = await this.settingsRepository.save(settings);
     await this.cacheService.del(CacheKeys.loyaltySettings(restaurantId));
-    await this.nextRevalidationService.revalidateRestaurantPublicPage(restaurantId);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
     return this.toResponse(saved);
   }
 
-  private async findOrCreate(restaurantId: string): Promise<RestaurantLoyaltySettings> {
-    const existing = await this.settingsRepository.findOne({ where: { restaurantId } });
+  private async findOrCreate(
+    restaurantId: string,
+  ): Promise<RestaurantLoyaltySettings> {
+    const existing = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
     if (existing) {
       return existing;
     }
@@ -127,7 +136,9 @@ export class LoyaltySettingsService {
       id: level.id && isUuidV7(level.id) ? level.id : generateUuidV7(),
       name,
       requiredVisits: level.requiredVisits,
-      rewards: (level.rewards ?? []).map((reward) => this.normalizeReward(reward)),
+      rewards: (level.rewards ?? []).map((reward) =>
+        this.normalizeReward(reward),
+      ),
     };
   }
 
@@ -182,7 +193,9 @@ export class LoyaltySettingsService {
     }
   }
 
-  private toResponse(settings: RestaurantLoyaltySettings): LoyaltySettingsResponseDto {
+  private toResponse(
+    settings: RestaurantLoyaltySettings,
+  ): LoyaltySettingsResponseDto {
     return {
       restaurantId: settings.restaurantId,
       flameDisplayEnabled: settings.flameDisplayEnabled,

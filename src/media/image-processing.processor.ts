@@ -16,7 +16,9 @@ export class ImageProcessingProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<ImageProcessJobPayload>): Promise<ImageProcessJobResult> {
+  async process(
+    job: Job<ImageProcessJobPayload>,
+  ): Promise<ImageProcessJobResult> {
     this.logger.debug(`Processing image job ${job.id} → ${job.data.keyPrefix}`);
     const buffer = Buffer.from(job.data.bufferBase64, 'base64');
     return this.pipelineService.processAndStore({

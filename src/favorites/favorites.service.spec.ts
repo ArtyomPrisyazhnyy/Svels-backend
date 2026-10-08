@@ -23,9 +23,10 @@ describe('FavoritesService', () => {
   });
 
   it('resolveOwner prefers authenticated user over guest id', () => {
-    expect(
-      service.resolveOwner({ id: 'user-1' } as never, 'guest-1'),
-    ).toEqual({ kind: 'user', userId: 'user-1' });
+    expect(service.resolveOwner({ id: 'user-1' } as never, 'guest-1')).toEqual({
+      kind: 'user',
+      userId: 'user-1',
+    });
   });
 
   it('resolveOwner uses guest when there is no user', () => {

@@ -34,7 +34,10 @@ describe('UsersService platform auth lookup', () => {
     expect(repository.findOne).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.arrayContaining([
-          expect.objectContaining({ email: 'owner@example.com', restaurantId: expect.anything() }),
+          expect.objectContaining({
+            email: 'owner@example.com',
+            restaurantId: expect.anything(),
+          }),
           expect.objectContaining({
             email: 'owner@example.com',
             role: expect.anything(),

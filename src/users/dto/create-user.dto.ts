@@ -1,4 +1,10 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';
 import { UserRole } from '../../common/enums/user-role.enum';
 

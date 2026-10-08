@@ -13,7 +13,10 @@ describe('OrderSettingsService', () => {
     revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
   };
 
-  const service = new OrderSettingsService(repository as never, nextRevalidationService as never);
+  const service = new OrderSettingsService(
+    repository as never,
+    nextRevalidationService as never,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();

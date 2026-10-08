@@ -1,4 +1,10 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  timingSafeEqual,
+} from 'crypto';
 
 /**
  * AES-256-GCM для секретов мерчантов (bePaid secret key и т.п.).
@@ -16,7 +22,10 @@ function resolveMasterKey(): Buffer {
 export function encryptSecret(plainText: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', resolveMasterKey(), iv);
-  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(plainText, 'utf8'),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
   return [
     'v1',
@@ -39,7 +48,9 @@ export function decryptSecret(payload: string): string {
 
   const decipher = createDecipheriv('aes-256-gcm', resolveMasterKey(), iv);
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString(
+    'utf8',
+  );
 }
 
 export function secretsEqual(a: string, b: string): boolean {

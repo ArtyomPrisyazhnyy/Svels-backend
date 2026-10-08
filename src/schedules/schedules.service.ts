@@ -30,7 +30,10 @@ export class SchedulesService {
     return schedules;
   }
 
-  async create(restaurantId: string, dto: CreateScheduleDto): Promise<WorkSchedule> {
+  async create(
+    restaurantId: string,
+    dto: CreateScheduleDto,
+  ): Promise<WorkSchedule> {
     const schedule = this.scheduleRepository.create({
       restaurantId,
       dayOfWeek: dto.dayOfWeek,

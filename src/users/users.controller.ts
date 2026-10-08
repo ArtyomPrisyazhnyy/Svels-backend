@@ -23,7 +23,9 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get('me')
-  getProfile(@CurrentUser() user: AuthenticatedUser): Promise<UserResponseDto | null> {
+  getProfile(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<UserResponseDto | null> {
     return this.usersService.findById(user.id);
   }
 
@@ -32,7 +34,11 @@ export class UsersController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    return this.usersService.updateProfile(user.id, dto.firstName, dto.lastName);
+    return this.usersService.updateProfile(
+      user.id,
+      dto.firstName,
+      dto.lastName,
+    );
   }
 
   @Patch('me/password')

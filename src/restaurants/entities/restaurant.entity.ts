@@ -26,7 +26,11 @@ export class Restaurant {
   @Column({ type: 'varchar', length: 9, nullable: true })
   unp: string | null;
 
-  @Column({ type: 'enum', enum: RestaurantStatus, default: RestaurantStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: RestaurantStatus,
+    default: RestaurantStatus.PENDING,
+  })
   status: RestaurantStatus;
 
   @Column({ type: 'uuid' })

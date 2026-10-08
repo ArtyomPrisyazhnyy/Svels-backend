@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { BOOKING_SETTINGS_SERVICE, FLOOR_PLANS_SERVICE } from '../common/constants/injection-tokens';
+import {
+  BOOKING_SETTINGS_SERVICE,
+  FLOOR_PLANS_SERVICE,
+} from '../common/constants/injection-tokens';
 import { BookingMode } from '../common/enums/booking-mode.enum';
 import { BookingStatus } from '../common/enums/booking-status.enum';
 import { DepositScheme } from '../common/enums/deposit-scheme.enum';
@@ -15,7 +18,10 @@ import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { FloorPlansService } from '../floor-plans/floor-plans.service';
-import type { BookingSettingsSnapshot, BookingSettingsService } from '../booking-settings/booking-settings.service';
+import type {
+  BookingSettingsSnapshot,
+  BookingSettingsService,
+} from '../booking-settings/booking-settings.service';
 import { SchedulesService } from '../schedules/schedules.service';
 import { WorkSchedule } from '../schedules/entities/work-schedule.entity';
 import { RestaurantBookingSettings } from '../booking-settings/entities/restaurant-booking-settings.entity';
@@ -24,7 +30,10 @@ import { Booking } from './entities/booking.entity';
 import type { Table } from '../floor-plans/entities/table.entity';
 import type { FloorPlan } from '../floor-plans/entities/floor-plan.entity';
 
-const ACTIVE_BOOKING_STATUSES = [BookingStatus.PENDING, BookingStatus.CONFIRMED];
+const ACTIVE_BOOKING_STATUSES = [
+  BookingStatus.PENDING,
+  BookingStatus.CONFIRMED,
+];
 
 /** TTL Redis-лока на слот брони — достаточно для завершения транзакции БД. */
 const BOOKING_LOCK_TTL_SECONDS = 10;
@@ -81,7 +90,9 @@ function todayString(): string {
 }
 
 function maxDateString(advanceDays: number): string {
-  return new Date(Date.now() + advanceDays * 86_400_000).toISOString().slice(0, 10);
+  return new Date(Date.now() + advanceDays * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 function dayOfWeekOf(date: string): number {
@@ -94,7 +105,11 @@ function currentMinutesLocal(): number {
 }
 
 /** Нормализация slotStart/slotEnd из date+time (интерпретируем как локальное время сервера). */
-function buildSlotRange(date: string, time: string, durationMinutes: number): { start: Date; end: Date } {
+function buildSlotRange(
+  date: string,
+  time: string,
+  durationMinutes: number,
+): { start: Date; end: Date } {
   const start = new Date(`${date}T${time.slice(0, 5)}:00`);
   const end = new Date(start.getTime() + durationMinutes * 60_000);
   return { start, end };
@@ -119,7 +134,8 @@ export class BookingsService {
     userId: string,
     dto: CreateBookingDto,
   ): Promise<Booking> {
-    const settings = await this.bookingSettingsService.getSnapshot(restaurantId);
+    const settings =
+      await this.bookingSettingsService.getSnapshot(restaurantId);
 
     if (!settings.bookingEnabled) {
       throw new BadRequestException('Бронирование в этом заведении недоступно');
@@ -131,7 +147,10 @@ export class BookingsService {
       );
     }
 
-    if (dto.bookingDate < todayString() || dto.bookingDate > maxDateString(settings.advanceDays)) {
+    if (
+      dto.bookingDate < todayString() ||
+      dto.bookingDate > maxDateString(settings.advanceDays)
+    ) {
       throw new BadRequestException(
         `Бронирование доступно на срок до ${settings.advanceDays} дней вперёд`,
       );
@@ -179,10 +198,16 @@ export class BookingsService {
       dto.bookingTime,
       settings.bookingDurationMinutes,
     );
-    const lockKey = CacheKeys.bookingTableLock(dto.tableId, slotStart.toISOString());
+    const lockKey = CacheKeys.bookingTableLock(
+      dto.tableId,
+      slotStart.toISOString(),
+    );
 
     // 1. Redis-лок: fast-fail второму параллельному запросу.
-    const lockToken = await this.cacheService.tryLock(lockKey, BOOKING_LOCK_TTL_SECONDS);
+    const lockToken = await this.cacheService.tryLock(
+      lockKey,
+      BOOKING_LOCK_TTL_SECONDS,
+    );
     if (lockToken === null) {
       throw new ConflictException('Стол уже бронируется — попробуйте ещё раз');
     }
@@ -208,7 +233,9 @@ export class BookingsService {
           const overlapping = await manager
             .createQueryBuilder(Booking, 'booking')
             .where('booking.tableId = :tableId', { tableId: dto.tableId })
-            .andWhere('booking.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+            .andWhere('booking.status IN (:...statuses)', {
+              statuses: ACTIVE_BOOKING_STATUSES,
+            })
             .andWhere('booking.slotStart < :end', { end: slotEnd })
             .andWhere('booking.slotEnd > :start', { start: slotStart })
             .getOne();
@@ -228,7 +255,9 @@ export class BookingsService {
             guestCount: dto.guestCount,
             depositAmount,
             notes: dto.notes ? sanitizeText(dto.notes) : null,
-            status: settings.autoConfirm ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
+            status: settings.autoConfirm
+              ? BookingStatus.CONFIRMED
+              : BookingStatus.PENDING,
           });
 
           const saved = await manager.save(booking);
@@ -249,7 +278,10 @@ export class BookingsService {
     settings: BookingSettingsSnapshot,
   ): Promise<Booking> {
     const tables = await this.floorPlansService.getActiveTables(restaurantId);
-    const totalCapacity = tables.reduce((sum, table) => sum + table.capacity, 0);
+    const totalCapacity = tables.reduce(
+      (sum, table) => sum + table.capacity,
+      0,
+    );
     const { start: slotStart, end: slotEnd } = buildSlotRange(
       dto.bookingDate,
       dto.bookingTime,
@@ -268,13 +300,20 @@ export class BookingsService {
       const occupiedRows = await manager
         .createQueryBuilder(Booking, 'booking')
         .where('booking.restaurantId = :restaurantId', { restaurantId })
-        .andWhere('booking.bookingDate = :bookingDate', { bookingDate: dto.bookingDate })
+        .andWhere('booking.bookingDate = :bookingDate', {
+          bookingDate: dto.bookingDate,
+        })
         .andWhere('booking.slotStart < :end', { end: slotEnd })
         .andWhere('booking.slotEnd > :start', { start: slotStart })
-        .andWhere('booking.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+        .andWhere('booking.status IN (:...statuses)', {
+          statuses: ACTIVE_BOOKING_STATUSES,
+        })
         .getMany();
 
-      const occupiedSeats = occupiedRows.reduce((sum, b) => sum + b.guestCount, 0);
+      const occupiedSeats = occupiedRows.reduce(
+        (sum, b) => sum + b.guestCount,
+        0,
+      );
 
       if (totalCapacity > 0 && occupiedSeats + dto.guestCount > totalCapacity) {
         throw new BadRequestException('На это время нет свободных мест');
@@ -289,11 +328,14 @@ export class BookingsService {
         slotStart,
         slotEnd,
         guestCount: dto.guestCount,
-        depositAmount: settings.depositScheme === DepositScheme.GLOBAL_DEPOSIT
-          ? Number(settings.depositAmount)
-          : 0,
+        depositAmount:
+          settings.depositScheme === DepositScheme.GLOBAL_DEPOSIT
+            ? Number(settings.depositAmount)
+            : 0,
         notes: dto.notes ? sanitizeText(dto.notes) : null,
-        status: settings.autoConfirm ? BookingStatus.CONFIRMED : BookingStatus.PENDING,
+        status: settings.autoConfirm
+          ? BookingStatus.CONFIRMED
+          : BookingStatus.PENDING,
       });
 
       const saved = await manager.save(booking);
@@ -342,7 +384,8 @@ export class BookingsService {
     restaurantId: string,
     date: string,
   ): Promise<BookingAvailabilityResponse> {
-    const settings = await this.bookingSettingsService.getSnapshot(restaurantId);
+    const settings =
+      await this.bookingSettingsService.getSnapshot(restaurantId);
 
     const base: BookingAvailabilityResponse = {
       enabled: settings.bookingEnabled,
@@ -388,7 +431,12 @@ export class BookingsService {
           activeBookings.some(
             (b) =>
               b.tableId === table.id &&
-              this.slotsOverlap(slot, b.slotStart, b.slotEnd, settings.bookingDurationMinutes),
+              this.slotsOverlap(
+                slot,
+                b.slotStart,
+                b.slotEnd,
+                settings.bookingDurationMinutes,
+              ),
           ),
         ),
       }));
@@ -398,7 +446,12 @@ export class BookingsService {
       for (const slot of slots) {
         const occupied = activeBookings
           .filter((b) =>
-            this.slotsOverlap(slot, b.slotStart, b.slotEnd, settings.bookingDurationMinutes),
+            this.slotsOverlap(
+              slot,
+              b.slotStart,
+              b.slotEnd,
+              settings.bookingDurationMinutes,
+            ),
           )
           .reduce((sum, b) => sum + b.guestCount, 0);
         seatsBySlot[slot] = {
@@ -422,17 +475,29 @@ export class BookingsService {
     date: string,
     time: string,
   ): Promise<TablesAvailabilityResponse> {
-    const settings = await this.bookingSettingsService.getSnapshot(restaurantId);
-    const { start, end } = buildSlotRange(date, time, settings.bookingDurationMinutes);
+    const settings =
+      await this.bookingSettingsService.getSnapshot(restaurantId);
+    const { start, end } = buildSlotRange(
+      date,
+      time,
+      settings.bookingDurationMinutes,
+    );
 
     const withStatus = await this.bookingRepository
       .createQueryBuilder('booking')
-      .select(['booking.tableId', 'booking.slotStart', 'booking.slotEnd', 'booking.status'])
+      .select([
+        'booking.tableId',
+        'booking.slotStart',
+        'booking.slotEnd',
+        'booking.status',
+      ])
       .where('booking.restaurantId = :restaurantId', { restaurantId })
       .andWhere('booking.bookingDate = :date', { date })
       .andWhere('booking.slotStart < :end', { end })
       .andWhere('booking.slotEnd > :start', { start })
-      .andWhere('booking.status IN (:...statuses)', { statuses: ACTIVE_BOOKING_STATUSES })
+      .andWhere('booking.status IN (:...statuses)', {
+        statuses: ACTIVE_BOOKING_STATUSES,
+      })
       .getMany();
 
     const busy: TableBusyEntry[] = withStatus
@@ -450,7 +515,12 @@ export class BookingsService {
     };
   }
 
-  private slotsOverlap(slot: string, bookingStart: Date, bookingEnd: Date, duration: number): boolean {
+  private slotsOverlap(
+    slot: string,
+    bookingStart: Date,
+    bookingEnd: Date,
+    duration: number,
+  ): boolean {
     const slotStart = new Date(`${slot}:00`);
     const slotEnd = new Date(slotStart.getTime() + duration * 60_000);
     return slotStart < bookingEnd && slotEnd > bookingStart;
@@ -478,8 +548,13 @@ export class BookingsService {
     return Array.from(slotSet).sort();
   }
 
-  private async invalidateAvailabilityCache(restaurantId: string, date: string): Promise<void> {
-    await this.cacheService.del(CacheKeys.tableAvailability(restaurantId, date));
+  private async invalidateAvailabilityCache(
+    restaurantId: string,
+    date: string,
+  ): Promise<void> {
+    await this.cacheService.del(
+      CacheKeys.tableAvailability(restaurantId, date),
+    );
   }
 
   async findByUser(userId: string): Promise<Booking[]> {
@@ -529,7 +604,10 @@ export class BookingsService {
     booking.status = BookingStatus.CANCELLED;
     const saved = await this.bookingRepository.save(booking);
     if (booking.tableId) {
-      await this.invalidateAvailabilityCache(booking.restaurantId, booking.bookingDate);
+      await this.invalidateAvailabilityCache(
+        booking.restaurantId,
+        booking.bookingDate,
+      );
     }
     return saved;
   }

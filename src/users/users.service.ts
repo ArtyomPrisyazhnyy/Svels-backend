@@ -43,7 +43,10 @@ export class UsersService implements IUsersService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async create(dto: CreateUserDto, passwordHash: string): Promise<UserResponseDto> {
+  async create(
+    dto: CreateUserDto,
+    passwordHash: string,
+  ): Promise<UserResponseDto> {
     const existing = await this.findPlatformUserByEmail(dto.email);
     if (existing) {
       throw new ConflictException('Пользователь с таким email уже существует');
@@ -64,10 +67,18 @@ export class UsersService implements IUsersService {
     return this.toResponse(saved);
   }
 
-  async createGuest(dto: CreateGuestUserDto, restaurantId: string): Promise<UserResponseDto> {
-    const existing = await this.findGuestByPhoneAndRestaurant(dto.phone, restaurantId);
+  async createGuest(
+    dto: CreateGuestUserDto,
+    restaurantId: string,
+  ): Promise<UserResponseDto> {
+    const existing = await this.findGuestByPhoneAndRestaurant(
+      dto.phone,
+      restaurantId,
+    );
     if (existing) {
-      throw new ConflictException('Пользователь с таким номером уже зарегистрирован в этом заведении');
+      throw new ConflictException(
+        'Пользователь с таким номером уже зарегистрирован в этом заведении',
+      );
     }
 
     const user = this.userRepository.create({
@@ -90,7 +101,9 @@ export class UsersService implements IUsersService {
     return this.findPlatformUserByEmail(email);
   }
 
-  async findPlatformUserByEmail(email: string): Promise<PlatformAuthUserRecord | null> {
+  async findPlatformUserByEmail(
+    email: string,
+  ): Promise<PlatformAuthUserRecord | null> {
     const normalizedEmail = email.toLowerCase();
 
     const user = await this.userRepository.findOne({
@@ -146,7 +159,9 @@ export class UsersService implements IUsersService {
     return user ? this.toResponse(user) : null;
   }
 
-  async findOrCreateFromGoogle(profile: GoogleProfileInput): Promise<UserResponseDto> {
+  async findOrCreateFromGoogle(
+    profile: GoogleProfileInput,
+  ): Promise<UserResponseDto> {
     const byGoogleId = await this.findByGoogleId(profile.googleId);
     if (byGoogleId) {
       return byGoogleId;
@@ -155,13 +170,17 @@ export class UsersService implements IUsersService {
     const byEmail = await this.findPlatformUserByEmail(profile.email);
 
     if (byEmail) {
-      const user = await this.userRepository.findOne({ where: { id: byEmail.id } });
+      const user = await this.userRepository.findOne({
+        where: { id: byEmail.id },
+      });
       if (!user) {
         throw new NotFoundException('Пользователь не найден');
       }
 
       if (user.googleId && user.googleId !== profile.googleId) {
-        throw new ConflictException('Email уже привязан к другому Google-аккаунту');
+        throw new ConflictException(
+          'Email уже привязан к другому Google-аккаунту',
+        );
       }
 
       user.googleId = profile.googleId;

@@ -1,10 +1,4 @@
-import {
-  GoneException,
-  Body,
-  Controller,
-  Param,
-  Post,
-} from '@nestjs/common';
+import { GoneException, Body, Controller, Param, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { ThrottleLimits } from '../common/utils/throttle-limits.util';
@@ -79,6 +73,8 @@ export class RestaurantGuestAuthController {
   @Post('register')
   @Throttle(ThrottleLimits.authRegister)
   async register(): Promise<never> {
-    throw new GoneException('Используйте /auth/otp/send, /auth/otp/verify и /auth/otp/register');
+    throw new GoneException(
+      'Используйте /auth/otp/send, /auth/otp/verify и /auth/otp/register',
+    );
   }
 }
