@@ -16,7 +16,9 @@ import { CorsOriginService } from './common/cors/cors-origin.service';
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter(),
+    new FastifyAdapter({
+      trustProxy: true,
+    }),
   );
 
   const corsOriginService = app.get(CorsOriginService);

@@ -1,10 +1,7 @@
 import 'reflect-metadata';
-import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-
-config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');

@@ -41,10 +41,35 @@ describe('CorsOriginService', () => {
     expect(resolveByDomain).toHaveBeenCalledWith('cafe.example.by');
   });
 
+  it('rejects http origins for custom domain resolution', async () => {
+    const resolveByDomain = jest.fn().mockResolvedValue({ id: 'r1' });
+    const service = createService({ resolveByDomain });
+
+    await expect(
+      service.isOriginAllowed('http://cafe.example.by'),
+    ).resolves.toBe(false);
+    expect(resolveByDomain).not.toHaveBeenCalled();
+  });
+
+  it('evicts oldest origin cache entries after 1000 items', async () => {
+    const resolveByDomain = jest.fn().mockResolvedValue({ id: 'r1' });
+    const service = createService({ resolveByDomain });
+
+    const firstOrigin = 'https://site0.example.com';
+    await service.isOriginAllowed(firstOrigin);
+    expect(resolveByDomain).toHaveBeenCalledTimes(1);
+
+    for (let i = 1; i <= 1000; i += 1) {
+      await service.isOriginAllowed(`https://site${i}.example.com`);
+    }
+
+    resolveByDomain.mockClear();
+    await service.isOriginAllowed(firstOrigin);
+    expect(resolveByDomain).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects unknown origin without ACAO (not in whitelist, domain unresolved)', async () => {
-    const resolveByDomain = jest
-      .fn()
-      .mockRejectedValue(new Error('not found'));
+    const resolveByDomain = jest.fn().mockRejectedValue(new Error('not found'));
     const resolver: RestaurantsDomainResolver = { resolveByDomain };
     const service = createService(resolver);
 

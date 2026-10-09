@@ -3,6 +3,7 @@ import { RESTAURANTS_SERVICE } from '../constants/injection-tokens';
 import type { RestaurantsDomainResolver } from '../interfaces/restaurants-domain-resolver.interface';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_ORIGIN_CACHE_ENTRIES = 1000;
 
 type OriginCacheEntry = {
   allowed: boolean;
@@ -55,20 +56,42 @@ export class CorsOriginService {
     }
 
     const allowed = await this.checkCustomDomainOrigin(origin);
+    this.setOriginCacheEntry(normalized, allowed);
+    return allowed;
+  }
+
+  private setOriginCacheEntry(normalized: string, allowed: boolean): void {
+    if (
+      this.originCache.size >= MAX_ORIGIN_CACHE_ENTRIES &&
+      !this.originCache.has(normalized)
+    ) {
+      const oldestKey = this.originCache.keys().next().value as
+        | string
+        | undefined;
+      if (oldestKey !== undefined) {
+        this.originCache.delete(oldestKey);
+      }
+    }
+
     this.originCache.set(normalized, {
       allowed,
       expiresAt: Date.now() + CACHE_TTL_MS,
     });
-    return allowed;
   }
 
   private async checkCustomDomainOrigin(origin: string): Promise<boolean> {
-    let hostname: string;
+    let parsed: URL;
     try {
-      hostname = new URL(origin).hostname;
+      parsed = new URL(origin);
     } catch {
       return false;
     }
+
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    const hostname = parsed.hostname;
 
     try {
       await this.restaurantsService.resolveByDomain(hostname);
