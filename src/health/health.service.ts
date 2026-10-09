@@ -1,8 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CacheService } from '../cache/cache.service';
+import { RESTAURANTS_SERVICE } from '../common/constants/injection-tokens';
+import type { RestaurantsDomainResolver } from '../common/interfaces/restaurants-domain-resolver.interface';
 
 export type HealthCheckResult = {
   status: 'ok' | 'error';
@@ -17,6 +19,8 @@ export class HealthService {
     private readonly dataSource: DataSource,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
+    @Inject(RESTAURANTS_SERVICE)
+    private readonly restaurantsService: RestaurantsDomainResolver,
   ) {}
 
   async check(): Promise<HealthCheckResult> {
@@ -40,6 +44,15 @@ export class HealthService {
       return 'up';
     } catch {
       return 'down';
+    }
+  }
+
+  async isCustomDomainAllowed(domain: string): Promise<boolean> {
+    try {
+      await this.restaurantsService.resolveByDomain(domain);
+      return true;
+    } catch {
+      return false;
     }
   }
 

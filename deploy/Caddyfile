@@ -1,0 +1,34 @@
+{
+  email {$ACME_EMAIL}
+  on_demand_tls {
+    ask http://api:3000/ask
+  }
+}
+
+# Платформенные хосты (задайте PLATFORM_DOMAIN / ADMIN_DOMAIN в .env при запуске Caddy)
+{$PLATFORM_DOMAIN} {
+  encode gzip zstd
+  reverse_proxy web:3000
+}
+
+{$ADMIN_DOMAIN} {
+  encode gzip zstd
+  reverse_proxy web:3000
+}
+
+# API (основной домен платформы + /api при необходимости настраивается на reverse_proxy)
+api.{$PLATFORM_DOMAIN} {
+  encode gzip zstd
+  @ask path /ask /ask/*
+  respond @ask 404
+  reverse_proxy api:3000
+}
+
+# Кастомные домены заведений (on-demand TLS)
+https:// {
+  tls {
+    on_demand
+  }
+  encode gzip zstd
+  reverse_proxy web:3000
+}

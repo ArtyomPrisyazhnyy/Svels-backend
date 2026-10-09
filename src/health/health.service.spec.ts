@@ -32,7 +32,16 @@ describe('HealthService', () => {
       }),
     } as unknown as ConfigService;
 
-    return new HealthService(dataSource, cacheService, configService);
+    const restaurantsService = {
+      resolveByDomain: jest.fn(),
+    };
+
+    return new HealthService(
+      dataSource,
+      cacheService,
+      configService,
+      restaurantsService,
+    );
   };
 
   it('returns ok when database is up and redis is available', async () => {

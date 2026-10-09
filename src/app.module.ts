@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { APP_GUARD } from '@nestjs/core';
 import appConfig from './config/app.config';
 import { validateEnv } from './config/env.validation';
@@ -44,8 +45,11 @@ import { NextRevalidationModule } from './next-revalidation/next-revalidation.mo
 import { DevModule } from './dev/dev.module';
 import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
 import { HealthModule } from './health/health.module';
+import { CorsModule } from './common/cors/cors.module';
+import { AppThrottlerModule } from './config/throttler.config';
 
 const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
+const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
 
 @Module({
   imports: [
@@ -65,15 +69,12 @@ const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
         bepaidConfig,
       ],
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 100,
-      },
-    ]),
+    AppThrottlerModule,
     EventEmitterModule.forRoot(),
     DatabaseModule,
     HealthModule,
+    CorsModule,
+    ...(includeSentry ? [SentryModule.forRoot()] : []),
     AppCacheModule,
     StorageModule,
     MediaModule.forRoot({
