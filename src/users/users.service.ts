@@ -184,6 +184,26 @@ export class UsersService implements IUsersService {
     return this.toResponse(saved);
   }
 
+  async createTelegramGuest(
+    dto: { telegramUserId: string; firstName: string; lastName: string },
+    restaurantId: string,
+  ): Promise<UserResponseDto> {
+    const user = this.userRepository.create({
+      email: `tg+${restaurantId}+${dto.telegramUserId}@telegram.svels.local`,
+      phone: null,
+      passwordHash: null,
+      firstName: sanitizeText(dto.firstName),
+      lastName: sanitizeText(dto.lastName),
+      role: UserRole.USER,
+      restaurantId,
+      authProvider: AuthProvider.LOCAL,
+      googleId: null,
+    });
+
+    const saved = await this.userRepository.save(user);
+    return this.toResponse(saved);
+  }
+
   async findByEmail(email: string): Promise<PlatformAuthUserRecord | null> {
     return this.findPlatformUserByEmail(email);
   }

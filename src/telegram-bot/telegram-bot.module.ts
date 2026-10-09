@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { PreOrdersModule } from '../pre-orders/pre-orders.module';
 import { RestaurantLocation } from '../restaurants/entities/restaurant-location.entity';
+import { TelegramWebAppModule } from '../auth/telegram-webapp/telegram-webapp.module';
 import { RestaurantTelegramChat } from './entities/restaurant-telegram-chat.entity';
 import { TelegramLinkCode } from './entities/telegram-link-code.entity';
 import { TelegramOrderMessage } from './entities/telegram-order-message.entity';
@@ -26,6 +27,7 @@ import { TelegramWebhookService } from './telegram-webhook.service';
       RestaurantLocation,
     ]),
     PreOrdersModule,
+    TelegramWebAppModule,
   ],
   controllers: [TelegramRestaurantController, TelegramWebhookController],
   providers: [

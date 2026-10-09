@@ -411,6 +411,11 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  /** Выдаёт тот же JWT, что и OTP-вход гостя. */
+  issueGuestSession(user: UserResponseDto): AuthResponseDto {
+    return this.buildAuthResponse(user);
+  }
+
   private buildAuthResponse(user: UserResponseDto): AuthResponseDto {
     const payload: {
       sub: string;
