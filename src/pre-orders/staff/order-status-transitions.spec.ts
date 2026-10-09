@@ -23,18 +23,15 @@ describe('isStatusTransitionAllowed transition table', () => {
     [PreOrderStatus.CANCELLED, PreOrderStatus.NEW, false],
   ];
 
-  it.each(cases)(
-    'hall %s -> %s = %s',
-    (from, to, expected) => {
-      expect(
-        isStatusTransitionAllowed({
-          from,
-          to,
-          ...hall,
-        }),
-      ).toBe(expected);
-    },
-  );
+  it.each(cases)('hall %s -> %s = %s', (from, to, expected) => {
+    expect(
+      isStatusTransitionAllowed({
+        from,
+        to,
+        ...hall,
+      }),
+    ).toBe(expected);
+  });
 });
 
 describe('isStatusTransitionAllowed role rules', () => {
