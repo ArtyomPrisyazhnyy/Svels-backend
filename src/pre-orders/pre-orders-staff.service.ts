@@ -182,6 +182,7 @@ export class PreOrdersStaffService implements IOrdersStaffService {
         from,
         to: params.to,
         actor: params.actor,
+        userId: order.userId,
       }),
     );
 
