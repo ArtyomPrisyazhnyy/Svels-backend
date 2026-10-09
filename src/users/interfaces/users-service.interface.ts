@@ -1,6 +1,7 @@
 import { AuthProvider } from '../../common/enums/auth-provider.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { CreateGuestUserDto } from '../dto/create-guest-user.dto';
+import { CreateRestaurantOwnerDto } from '../dto/create-restaurant-owner.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 
@@ -36,6 +37,11 @@ export interface IUsersService {
     dto: CreateGuestUserDto,
     restaurantId: string,
   ): Promise<UserResponseDto>;
+  createRestaurantOwner(
+    dto: CreateRestaurantOwnerDto,
+  ): Promise<UserResponseDto>;
+  bindRestaurant(ownerId: string, restaurantId: string): Promise<void>;
+  findEmailsByUserIds(userIds: string[]): Promise<Map<string, string>>;
   findByEmail(email: string): Promise<PlatformAuthUserRecord | null>;
   findPlatformUserByEmail(
     email: string,

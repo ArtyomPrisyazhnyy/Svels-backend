@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,6 +15,10 @@ import {
   CreateMenuItemDto,
   UpdateMenuItemDto,
 } from './dto/menu.dto';
+import {
+  ReorderMenuCategoriesDto,
+  UpdateMenuCategoryDto,
+} from './dto/menu-category.dto';
 import { MenuCategory } from './entities/menu-category.entity';
 import { MenuItem } from './entities/menu-item.entity';
 import {
@@ -77,6 +82,89 @@ export class MenuService {
     const saved = await this.categoryRepository.save(category);
     await this.invalidateCache(restaurantId);
     return saved;
+  }
+
+  async updateCategory(
+    restaurantId: string,
+    categoryId: string,
+    dto: UpdateMenuCategoryDto,
+  ): Promise<MenuCategory> {
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId, restaurantId },
+    });
+    if (!category) {
+      throw new NotFoundException('Категория не найдена');
+    }
+
+    if (dto.name !== undefined) {
+      category.name = sanitizeText(dto.name);
+    }
+    if (dto.sortOrder !== undefined) {
+      category.sortOrder = dto.sortOrder;
+    }
+
+    const saved = await this.categoryRepository.save(category);
+    await this.invalidateCache(restaurantId);
+    return saved;
+  }
+
+  async deleteCategory(
+    restaurantId: string,
+    categoryId: string,
+  ): Promise<void> {
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId, restaurantId },
+    });
+    if (!category) {
+      throw new NotFoundException('Категория не найдена');
+    }
+
+    const itemsCount = await this.itemRepository.count({
+      where: { categoryId, restaurantId },
+    });
+    if (itemsCount > 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Нельзя удалить категорию с позициями меню',
+        error: 'Conflict',
+        code: 'CATEGORY_NOT_EMPTY',
+      });
+    }
+
+    await this.categoryRepository.delete({ id: categoryId, restaurantId });
+    await this.invalidateCache(restaurantId);
+  }
+
+  async reorderCategories(
+    restaurantId: string,
+    dto: ReorderMenuCategoriesDto,
+  ): Promise<void> {
+    const categories = await this.categoryRepository.find({
+      where: { restaurantId },
+    });
+
+    if (categories.length !== dto.ids.length) {
+      throw new BadRequestException('Список категорий не совпадает с меню');
+    }
+
+    const knownIds = new Set(categories.map((category) => category.id));
+    for (const id of dto.ids) {
+      if (!knownIds.has(id)) {
+        throw new BadRequestException('Список категорий не совпадает с меню');
+      }
+    }
+
+    await this.categoryRepository.manager.transaction(async (manager) => {
+      for (let index = 0; index < dto.ids.length; index += 1) {
+        await manager.update(
+          MenuCategory,
+          { id: dto.ids[index], restaurantId },
+          { sortOrder: index },
+        );
+      }
+    });
+
+    await this.invalidateCache(restaurantId);
   }
 
   async createItem(

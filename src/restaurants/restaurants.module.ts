@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
 import { RESTAURANTS_SERVICE } from '../common/constants/injection-tokens';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { Restaurant } from './entities/restaurant.entity';
@@ -20,6 +21,7 @@ import { RestaurantsService } from './restaurants.service';
       RestaurantRegistrationRequest,
     ]),
     AuthModule,
+    UsersModule,
   ],
   controllers: [
     RestaurantsController,

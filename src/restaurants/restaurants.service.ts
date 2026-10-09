@@ -1,12 +1,13 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
@@ -30,6 +31,15 @@ import { RestaurantApprovedEvent } from './events/restaurant-approved.event';
 import { RestaurantRegistrationReviewedEvent } from './events/restaurant-registration-reviewed.event';
 import { RestaurantRegistrationSubmittedEvent } from './events/restaurant-registration-submitted.event';
 import { PendingRegistrationDto } from '../shared/dto/pending-registration.dto';
+import { USERS_SERVICE } from '../common/constants/injection-tokens';
+import type { IUsersService } from '../users/interfaces/users-service.interface';
+import { PasswordSetService } from '../auth/password-set.service';
+import {
+  AdminCreateRestaurantDto,
+  AdminCreateRestaurantResponseDto,
+  AdminRestaurantListItemDto,
+  OwnerInviteResponseDto,
+} from './dto/admin-restaurant.dto';
 
 @Injectable()
 export class RestaurantsService {
@@ -41,6 +51,9 @@ export class RestaurantsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly cacheService: CacheService,
     private readonly locationsService: RestaurantLocationsService,
+    @Inject(USERS_SERVICE)
+    private readonly usersService: IUsersService,
+    private readonly passwordSetService: PasswordSetService,
   ) {}
 
   async register(
@@ -187,6 +200,24 @@ export class RestaurantsService {
       restaurant.logoWebpUrl = dto.logoWebpUrl;
     }
 
+    if (dto.unp !== undefined) {
+      restaurant.unp = dto.unp;
+    }
+    if (dto.legalName !== undefined) {
+      restaurant.legalName = dto.legalName ? sanitizeText(dto.legalName) : null;
+    }
+    if (dto.legalAddress !== undefined) {
+      restaurant.legalAddress = dto.legalAddress
+        ? sanitizeText(dto.legalAddress)
+        : null;
+    }
+    if (dto.contactPhone !== undefined) {
+      restaurant.contactPhone = dto.contactPhone;
+    }
+    if (dto.contactEmail !== undefined) {
+      restaurant.contactEmail = dto.contactEmail;
+    }
+
     const saved = await this.restaurantRepository.save(restaurant);
     return this.toResponse(saved);
   }
@@ -307,14 +338,26 @@ export class RestaurantsService {
   }
 
   async createByAdmin(
-    dto: CreateRestaurantDto,
+    dto: CreateRestaurantDto & {
+      unp?: string | null;
+      customDomain?: string | null;
+    },
     ownerId: string,
   ): Promise<RestaurantResponseDto> {
+    let customDomain: string | null = null;
+    if (dto.customDomain !== undefined && dto.customDomain !== null) {
+      customDomain = await this.resolveCustomDomainUpdate(
+        '00000000-0000-7000-8000-000000000000',
+        dto.customDomain,
+      );
+    }
+
     const restaurant = this.restaurantRepository.create({
       name: sanitizeText(dto.name),
       description: dto.description ? sanitizeText(dto.description) : null,
       address: sanitizeText(dto.address),
-      unp: null,
+      unp: dto.unp ?? null,
+      customDomain,
       ownerId,
       status: RestaurantStatus.APPROVED,
     });
@@ -326,12 +369,97 @@ export class RestaurantsService {
     return this.toResponse(saved);
   }
 
+  async findAllForAdmin(
+    search?: string,
+  ): Promise<AdminRestaurantListItemDto[]> {
+    const trimmed = search?.trim();
+    const restaurants = await this.restaurantRepository.find({
+      where: trimmed ? [{ name: ILike(`%${trimmed}%`) }] : undefined,
+      order: { createdAt: 'DESC' },
+    });
+
+    const ownerEmails = await this.usersService.findEmailsByUserIds(
+      restaurants.map((restaurant) => restaurant.ownerId),
+    );
+
+    return restaurants.map((restaurant) => ({
+      id: restaurant.id,
+      name: restaurant.name,
+      status: restaurant.status,
+      customDomain: restaurant.customDomain,
+      ownerEmail: ownerEmails.get(restaurant.ownerId) ?? null,
+      createdAt: restaurant.createdAt.toISOString(),
+    }));
+  }
+
+  async createRestaurantWithOwner(
+    dto: AdminCreateRestaurantDto,
+  ): Promise<AdminCreateRestaurantResponseDto> {
+    const owner = await this.usersService.createRestaurantOwner({
+      email: dto.owner.email,
+      firstName: dto.owner.firstName,
+      lastName: dto.owner.lastName,
+      phone: dto.owner.phone,
+    });
+
+    const restaurant = await this.createByAdmin(
+      {
+        name: dto.name,
+        address: dto.address,
+        unp: dto.unp ?? null,
+        customDomain: dto.customDomain ?? null,
+      },
+      owner.id,
+    );
+
+    await this.usersService.bindRestaurant(owner.id, restaurant.id);
+
+    this.eventEmitter.emit(
+      'restaurant.approved',
+      new RestaurantApprovedEvent(restaurant.id, owner.id),
+    );
+
+    const invite = await this.passwordSetService.issueForUser(owner.id);
+
+    return {
+      restaurant,
+      owner: { id: owner.id, email: owner.email },
+      setPasswordUrl: invite.setPasswordUrl,
+      expiresAt: invite.expiresAt,
+    };
+  }
+
+  async inviteRestaurantOwner(
+    restaurantId: string,
+  ): Promise<OwnerInviteResponseDto> {
+    const restaurant = await this.restaurantRepository.findOne({
+      where: { id: restaurantId },
+    });
+    if (!restaurant) {
+      throw new NotFoundException('Ресторан не найден');
+    }
+
+    const invite = await this.passwordSetService.issueForUser(
+      restaurant.ownerId,
+    );
+
+    return {
+      setPasswordUrl: invite.setPasswordUrl,
+      expiresAt: invite.expiresAt,
+    };
+  }
+
   private toResponse(restaurant: Restaurant): RestaurantResponseDto {
     return {
       id: restaurant.id,
       name: restaurant.name,
       description: restaurant.description,
       address: restaurant.address,
+      unp: restaurant.unp,
+      legalName: restaurant.legalName,
+      legalAddress: restaurant.legalAddress,
+      contactPhone: restaurant.contactPhone,
+      contactEmail: restaurant.contactEmail,
       status: restaurant.status,
       ownerId: restaurant.ownerId,
       customDomain: restaurant.customDomain,

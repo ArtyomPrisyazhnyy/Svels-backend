@@ -97,6 +97,32 @@ export class UpdateRestaurantDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   logoWebpUrl?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @Matches(/^\d{9}$/, { message: 'УНП должен содержать 9 цифр' })
+  unp?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  legalName?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  legalAddress?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  contactPhone?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  contactEmail?: string | null;
 }
 
 export class ReviewRegistrationDto {
