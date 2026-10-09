@@ -38,6 +38,7 @@ import { BookingSettingsModule } from './booking-settings/booking-settings.modul
 import { RestaurantStylingModule } from './restaurant-styling/restaurant-styling.module';
 import { PromoBannersModule } from './promo-banners/promo-banners.module';
 import { LoyaltySettingsModule } from './loyalty-settings/loyalty-settings.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
 import { PaymentSettingsModule } from './payment-settings/payment-settings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { FavoritesModule } from './favorites/favorites.module';
@@ -100,6 +101,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
     RestaurantStylingModule,
     PromoBannersModule,
     LoyaltySettingsModule,
+    LoyaltyModule,
     PaymentSettingsModule,
     PaymentsModule,
     FavoritesModule,
