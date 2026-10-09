@@ -10,9 +10,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   handleRequest<TUser>(
     err: Error | null,
     user: TUser,
-    _info: unknown,
-    _context: ExecutionContext,
+    info: unknown,
+    context: ExecutionContext,
   ): TUser {
+    void info;
+    void context;
     if (err || !user) {
       throw err ?? new UnauthorizedException('Требуется авторизация');
     }

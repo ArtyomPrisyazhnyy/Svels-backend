@@ -39,11 +39,7 @@ describe('TelegramLinkService', () => {
         ),
       ),
       findOne: jest.fn(
-        ({
-          where,
-        }: {
-          where: { restaurantId?: string; chatId?: string };
-        }) =>
+        ({ where }: { where: { restaurantId?: string; chatId?: string } }) =>
           Promise.resolve(
             chatStore.find(
               (c) =>

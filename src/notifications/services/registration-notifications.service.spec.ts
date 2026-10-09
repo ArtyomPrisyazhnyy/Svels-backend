@@ -1,5 +1,10 @@
 import { RegistrationNotificationsService } from './registration-notifications.service';
 
+type RegistrationStreamMessage = {
+  type: string;
+  data?: unknown;
+};
+
 describe('RegistrationNotificationsService', () => {
   it('broadcasts submitted registration to active stream subscribers', (done) => {
     const service = new RegistrationNotificationsService();
@@ -19,7 +24,11 @@ describe('RegistrationNotificationsService', () => {
     const stream$ = service.createStream();
     const subscription = stream$.subscribe({
       next: (event) => {
-        const message = JSON.parse(String(event.data));
+        const raw =
+          typeof event.data === 'string'
+            ? event.data
+            : JSON.stringify(event.data);
+        const message = JSON.parse(raw) as RegistrationStreamMessage;
         if (message.type === 'heartbeat') {
           return;
         }
@@ -46,7 +55,11 @@ describe('RegistrationNotificationsService', () => {
     const stream$ = service.createStream();
     const subscription = stream$.subscribe({
       next: (event) => {
-        const message = JSON.parse(String(event.data));
+        const raw =
+          typeof event.data === 'string'
+            ? event.data
+            : JSON.stringify(event.data);
+        const message = JSON.parse(raw) as RegistrationStreamMessage;
         if (message.type === 'heartbeat') {
           return;
         }

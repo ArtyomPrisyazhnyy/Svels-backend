@@ -31,20 +31,20 @@ describe('UsersService platform auth lookup', () => {
     const user = await service.findPlatformUserByEmail('owner@example.com');
 
     expect(user).toEqual(restaurantAdminWithBoundRestaurant);
-    expect(repository.findOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.arrayContaining([
-          expect.objectContaining({
-            email: 'owner@example.com',
-            restaurantId: expect.anything(),
-          }),
-          expect.objectContaining({
-            email: 'owner@example.com',
-            role: expect.anything(),
-          }),
-        ]),
-      }),
-    );
+    expect(repository.findOne).toHaveBeenCalledTimes(1);
+    const findOneCalls = repository.findOne.mock.calls as Array<
+      [{ where: Array<Record<string, unknown>> }]
+    >;
+    const findArgs = findOneCalls[0][0];
+    expect(findArgs.where).toHaveLength(2);
+    expect(findArgs.where[0]).toMatchObject({
+      email: 'owner@example.com',
+    });
+    expect(findArgs.where[0]).toHaveProperty('restaurantId');
+    expect(findArgs.where[1]).toMatchObject({
+      email: 'owner@example.com',
+    });
+    expect(findArgs.where[1]).toHaveProperty('role');
   });
 
   it('includes restaurantId for hall staff in profile responses', async () => {

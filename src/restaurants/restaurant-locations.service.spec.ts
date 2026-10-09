@@ -1,13 +1,11 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { RestaurantLocationsService } from './restaurant-locations.service';
-import { RestaurantLocation } from './entities/restaurant-location.entity';
-
 describe('RestaurantLocationsService', () => {
   const locationRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
     count: jest.fn(),
-    create: jest.fn((value) => value),
+    create: jest.fn(<T>(value: T) => value),
     save: jest.fn(),
     remove: jest.fn(),
   };
@@ -50,7 +48,7 @@ describe('RestaurantLocationsService', () => {
     locationRepository.findOne.mockResolvedValue({
       id: locationId,
       restaurantId,
-    } as RestaurantLocation);
+    });
     locationRepository.count.mockResolvedValue(1);
 
     await expect(
@@ -64,13 +62,13 @@ describe('RestaurantLocationsService', () => {
       .mockResolvedValueOnce({
         id: locationId,
         restaurantId,
-      } as RestaurantLocation)
+      })
       .mockResolvedValueOnce({
         id: '019efb61-5d8e-7058-b838-6f2696cb4206',
         restaurantId,
         city: 'Минск',
         address: 'ул. Ленина 2',
-      } as RestaurantLocation);
+      });
     locationRepository.count.mockResolvedValue(2);
     locationRepository.remove.mockResolvedValue(undefined);
     restaurantRepository.update.mockResolvedValue(undefined);

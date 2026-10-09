@@ -31,10 +31,10 @@ describe('LeadsService', () => {
   beforeEach(() => {
     leadRepository = {
       create: jest.fn((payload) => payload as LandingLead),
-      save: jest.fn(async (payload) => ({ ...savedLead, ...payload })),
+      save: jest.fn((payload) => Promise.resolve({ ...savedLead, ...payload })),
     };
     leadTelegramNotifier = {
-      notifyLead: jest.fn(async () => true),
+      notifyLead: jest.fn(() => Promise.resolve(true)),
     };
     service = new LeadsService(
       leadRepository as Repository<LandingLead>,

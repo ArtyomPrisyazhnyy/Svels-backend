@@ -75,14 +75,14 @@ export class RestaurantGuestAuthController {
   /** Устарело: вход гостя только через OTP. */
   @Post('login')
   @Throttle(ThrottleLimits.authLogin)
-  async login(): Promise<never> {
+  login(): never {
     throw new GoneException('Используйте /auth/otp/send и /auth/otp/verify');
   }
 
   /** Устарело: регистрация гостя только через OTP. */
   @Post('register')
   @Throttle(ThrottleLimits.authRegister)
-  async register(): Promise<never> {
+  register(): never {
     throw new GoneException(
       'Используйте /auth/otp/send, /auth/otp/verify и /auth/otp/register',
     );

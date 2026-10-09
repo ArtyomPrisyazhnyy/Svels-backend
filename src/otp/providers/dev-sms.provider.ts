@@ -15,7 +15,7 @@ export class DevSmsProvider implements ISmsProvider {
   private readonly logger = new Logger(DevSmsProvider.name);
   private readonly lastCodes = new Map<string, { code: string; at: string }>();
 
-  async send(phoneE164: string, message: string): Promise<SmsSendResult> {
+  send(phoneE164: string, message: string): Promise<SmsSendResult> {
     this.logger.warn(`[DEV SMS] to=${phoneE164} message=${message}`);
 
     const match = message.match(/(\d{4,8})/);
@@ -27,7 +27,11 @@ export class DevSmsProvider implements ISmsProvider {
       });
     }
 
-    return { ok: true, provider: this.name, messageId: `dev-${Date.now()}` };
+    return Promise.resolve({
+      ok: true,
+      provider: this.name,
+      messageId: `dev-${Date.now()}`,
+    });
   }
 
   getLastCode(

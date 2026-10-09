@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UuidV7Subscriber } from './uuid-v7.subscriber';
 import { resolvePostgresConnection } from './pg-connection';
+import type { TlsOptions } from 'tls';
 
 @Module({
   imports: [
@@ -11,7 +12,9 @@ import { resolvePostgresConnection } from './pg-connection';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const connection = resolvePostgresConnection();
-        const ssl = configService.get('database.ssl') ?? connection.ssl;
+        const ssl =
+          configService.get<TlsOptions | undefined>('database.ssl') ??
+          connection.ssl;
 
         return {
           type: 'postgres' as const,

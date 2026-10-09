@@ -63,8 +63,9 @@ export class PaymentsController {
   capture(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('preOrderId', ParseUuidV7Pipe) preOrderId: string,
-    @Body() _dto: CapturePaymentDto,
+    @Body() dto: CapturePaymentDto,
   ) {
+    void dto;
     return this.paymentsService.captureByPreOrder(restaurantId, preOrderId);
   }
 
@@ -74,8 +75,9 @@ export class PaymentsController {
   voidPayment(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('preOrderId', ParseUuidV7Pipe) preOrderId: string,
-    @Body() _dto: VoidPaymentDto,
+    @Body() dto: VoidPaymentDto,
   ) {
+    void dto;
     return this.paymentsService.voidByPreOrder(restaurantId, preOrderId);
   }
 }

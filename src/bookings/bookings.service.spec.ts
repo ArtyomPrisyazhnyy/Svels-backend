@@ -10,14 +10,10 @@ import {
 import { BookingMode } from '../common/enums/booking-mode.enum';
 import { DepositScheme } from '../common/enums/deposit-scheme.enum';
 import { CacheService } from '../cache/cache.service';
-import type {
-  BookingSettingsSnapshot,
-  BookingSettingsService,
-} from '../booking-settings/booking-settings.service';
+import type { BookingSettingsSnapshot } from '../booking-settings/booking-settings.service';
 import { BookingsService } from './bookings.service';
 import { Booking } from './entities/booking.entity';
 import type { Table } from '../floor-plans/entities/table.entity';
-import type { FloorPlansService } from '../floor-plans/floor-plans.service';
 import { SchedulesService } from '../schedules/schedules.service';
 
 const RESTAURANT_ID = '0197aaaa-aaaa-7aaa-aaaa-aaaaaaaaaaaa';
@@ -111,24 +107,26 @@ describe('BookingsService — race condition guards', () => {
    */
   function configureTransaction(overlapFound: boolean): void {
     dataSource.transaction.mockImplementation(
-      async (_isolation: string, cb: (manager: unknown) => unknown) => {
+      (_isolation: string, cb: (manager: unknown) => unknown) => {
         const manager = {
           getRepository: () => ({
-            createQueryBuilder: () => qbMock(async () => TABLE),
+            createQueryBuilder: () => qbMock(() => Promise.resolve(TABLE)),
           }),
           createQueryBuilder: () =>
-            qbMock(async () =>
-              overlapFound
-                ? {
-                    tableId: TABLE_ID,
-                    slotStart: new Date(),
-                    slotEnd: new Date(),
-                  }
-                : null,
+            qbMock(() =>
+              Promise.resolve(
+                overlapFound
+                  ? {
+                      tableId: TABLE_ID,
+                      slotStart: new Date(),
+                      slotEnd: new Date(),
+                    }
+                  : null,
+              ),
             ),
           create: (_entity: unknown, payload: Partial<Booking>) =>
             ({ ...payload, id: 'new-booking-id' }) as Booking,
-          save: async <T>(entity: T) => entity,
+          save: <T>(entity: T) => entity,
         };
         return cb(manager);
       },
@@ -138,7 +136,9 @@ describe('BookingsService — race condition guards', () => {
   beforeEach(async () => {
     bookingRepo = {
       find: jest.fn().mockResolvedValue([]),
-      createQueryBuilder: jest.fn().mockReturnValue(qbMock(async () => [])),
+      createQueryBuilder: jest
+        .fn()
+        .mockReturnValue(qbMock(() => Promise.resolve([]))),
     };
     floorPlansService = {
       findTableById: jest.fn().mockResolvedValue(TABLE),
@@ -272,7 +272,7 @@ describe('BookingsService — getTablesAvailability', () => {
           useValue: {
             createQueryBuilder: jest
               .fn()
-              .mockReturnValue(qbMock(async () => [])),
+              .mockReturnValue(qbMock(() => Promise.resolve([]))),
           },
         },
         {

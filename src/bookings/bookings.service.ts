@@ -28,7 +28,6 @@ import { RestaurantBookingSettings } from '../booking-settings/entities/restaura
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 import { Booking } from './entities/booking.entity';
 import type { Table } from '../floor-plans/entities/table.entity';
-import type { FloorPlan } from '../floor-plans/entities/floor-plan.entity';
 
 const ACTIVE_BOOKING_STATUSES = [
   BookingStatus.PENDING,

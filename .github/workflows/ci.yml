@@ -26,7 +26,6 @@ jobs:
       # Линт без --fix: известные legacy-замечания не блокают merge (continue-on-error).
       # Новые PR по-прежнему должны чистить затронутые файлы через `npx eslint <paths>`.
       - name: Lint
-        continue-on-error: true
         run: npx eslint "{src,apps,libs,test}/**/*.ts"
 
       - name: Unit tests
