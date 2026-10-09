@@ -25,7 +25,7 @@ type OrderPaymentStatus = 'not_required' | 'pending' | 'authorized' | 'paid' | '
 - `cancelled` требует `cancelReason` (1–300 символов).
 - При переходе в `accepted` и `paymentStatus='authorized'` выполняется capture (существующий `PaymentsService.captureByPreOrder`). При `cancelled` и `authorized` выполняется void.
 - Отмена заказа с `paymentStatus='paid'` → `409 PAID_ORDER_CANCEL_NOT_SUPPORTED` (возвраты — Wave 3).
-- Недопустимый переход → `400 INVALID_TRANSITION`.
+- Недопустимый переход → `409 INVALID_TRANSITION`.
 
 ### 3.2 Гость: создание заказа — `POST /restaurants/:restaurantId/pre-orders` (JWT гостя, как сейчас)
 ```ts
@@ -45,7 +45,7 @@ interface CreatePreOrderPayload {
     apartment?: string; entrance?: string; floor?: string; intercom?: string; // ≤20
     comment?: string;                         // ≤300
   };
-  requestedAt?: string | null;                // ISO 8601; null или нет = «как можно скорее»; не раньше now+10 мин и не позже now+7 дней
+  requestedAt?: string | null;                // ISO 8601; null или нет = «как можно скорее»; не раньше now+10 мин и не позже now+2 суток
   recipientName?: string;                     // только delivery + orderSettings.deliveryForSomeoneElse
   recipientPhone?: string;
   comment?: string;                           // ≤1000
@@ -53,7 +53,7 @@ interface CreatePreOrderPayload {
 }
 ```
 - **Убираются из запроса:** `unitPrice` и `name` у позиций. Цена и название считаются только на сервере (W1-B-ORD). W0-B2 оставляет их в DTO как `@IsOptional` и **игнорирует**, чтобы старые клиенты не ломались.
-- Ошибки: `400 VALIDATION` (стандартная валидация), `400 FULFILLMENT_DISABLED`, `400 PAYMENT_METHOD_DISABLED`, `400 ADDRESS_REQUIRED`, `400 LOCATION_REQUIRED`, `400 ITEM_UNAVAILABLE`, `400 INVALID_MODIFIERS`, `400 INVALID_REQUESTED_AT`, `409 ORDERS_PAUSED`, `409 RESTAURANT_CLOSED` (W1-B-ORD: проверка по `schedules`; при заданном `requestedAt` проверяется это время).
+- Ошибки: `400 VALIDATION` (стандартная валидация), `400 FULFILLMENT_DISABLED`, `400 PAYMENT_METHOD_DISABLED`, `400 ADDRESS_REQUIRED`, `400 LOCATION_REQUIRED`, `400 ITEM_UNAVAILABLE`, `400 INVALID_MODIFIERS`, `400 INVALID_REQUESTED_AT`, `409 ORDERS_PAUSED`, `409 ORDER_NUMBER_CONFLICT` (исчерпаны повторы при коллизии `orderNumber`), `409 RESTAURANT_CLOSED` (W1-B-ORD: проверка по `schedules`; при заданном `requestedAt` проверяется это время).
 
 Ответ (и для `GET /users/me/pre-orders`, `GET /users/me/pre-orders/:id`):
 ```ts

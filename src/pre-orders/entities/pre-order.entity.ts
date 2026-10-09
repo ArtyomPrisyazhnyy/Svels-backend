@@ -22,6 +22,8 @@ import type { DeliveryAddressDto } from '../dto/pre-order.dto';
     unique: true,
   },
 )
+@Index('IDX_pre_orders_restaurant_created_at', ['restaurantId', 'createdAt'])
+@Index('IDX_pre_orders_restaurant_updated_at', ['restaurantId', 'updatedAt'])
 export class PreOrder {
   @PrimaryColumn('uuid')
   id: string;

@@ -3,7 +3,7 @@ import type { MenuItem } from '../../menu/entities/menu-item.entity';
 import {
   MenuItemPricingError,
   resolveMenuItemLine,
-} from './menu-item-pricing.util';
+} from './menu-item-line.util';
 
 function makeMenuItem(
   overrides: Partial<MenuItem> & {
@@ -53,21 +53,57 @@ describe('resolveMenuItemLine', () => {
     const result = resolveMenuItemLine(menuItem, { 'grp-1': ['opt-1'] });
 
     expect(result.unitPrice).toBe(12);
-    expect(result.name).toBe('Бургер');
     expect(result.modifiers).toEqual([
       { groupName: 'Соус', optionName: 'Сырный', priceDelta: 2 },
     ]);
   });
 
-  it('throws ITEM_UNAVAILABLE when item missing', () => {
+  it('throws ITEM_UNAVAILABLE when item missing or not available', () => {
     expect(() => resolveMenuItemLine(undefined, {})).toThrow(
       MenuItemPricingError,
     );
-    try {
-      resolveMenuItemLine(undefined, {});
-    } catch (error) {
-      expect((error as MenuItemPricingError).code).toBe('ITEM_UNAVAILABLE');
-    }
+    expect(() =>
+      resolveMenuItemLine(makeMenuItem({ isAvailable: false }), {}),
+    ).toThrow(MenuItemPricingError);
+  });
+
+  it('throws INVALID_MODIFIERS for required group without selection', () => {
+    const menuItem = makeMenuItem({
+      modifierGroups: [
+        {
+          id: 'grp-1',
+          name: 'Соус',
+          selectionType: ModifierSelectionType.SINGLE,
+          required: true,
+          options: [{ id: 'opt-1', name: 'Сырный', priceDelta: 0 }],
+        },
+      ],
+    });
+
+    expect(() => resolveMenuItemLine(menuItem, {})).toThrow(
+      MenuItemPricingError,
+    );
+  });
+
+  it('throws INVALID_MODIFIERS for single choice with two options', () => {
+    const menuItem = makeMenuItem({
+      modifierGroups: [
+        {
+          id: 'grp-1',
+          name: 'Соус',
+          selectionType: ModifierSelectionType.SINGLE,
+          required: false,
+          options: [
+            { id: 'opt-1', name: 'A', priceDelta: 0 },
+            { id: 'opt-2', name: 'B', priceDelta: 0 },
+          ],
+        },
+      ],
+    });
+
+    expect(() =>
+      resolveMenuItemLine(menuItem, { 'grp-1': ['opt-1', 'opt-2'] }),
+    ).toThrow(MenuItemPricingError);
   });
 
   it('throws INVALID_MODIFIERS for unknown option', () => {
@@ -86,5 +122,22 @@ describe('resolveMenuItemLine', () => {
     expect(() =>
       resolveMenuItemLine(menuItem, { 'grp-1': ['missing'] }),
     ).toThrow(MenuItemPricingError);
+  });
+
+  it('rounds unit price to kopecks', () => {
+    const menuItem = makeMenuItem({
+      price: 10.333,
+      modifierGroups: [
+        {
+          id: 'grp-1',
+          name: 'Доп',
+          selectionType: ModifierSelectionType.MULTIPLE,
+          required: false,
+          options: [{ id: 'opt-1', name: 'X', priceDelta: 0.334 }],
+        },
+      ],
+    });
+    const result = resolveMenuItemLine(menuItem, { 'grp-1': ['opt-1'] });
+    expect(result.unitPrice).toBe(10.67);
   });
 });

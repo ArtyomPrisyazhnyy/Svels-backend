@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ORDERS_STAFF_SERVICE } from '../common/constants/injection-tokens';
+import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { MenuModule } from '../menu/menu.module';
 import { OrderSettingsModule } from '../order-settings/order-settings.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { SchedulesModule } from '../schedules/schedules.module';
 import { RestaurantLocation } from '../restaurants/entities/restaurant-location.entity';
 import { PreOrderItem } from './entities/pre-order-item.entity';
 import { PreOrder } from './entities/pre-order.entity';
@@ -17,11 +19,13 @@ import { PreOrdersService } from './pre-orders.service';
     MenuModule,
     OrderSettingsModule,
     PaymentsModule,
+    SchedulesModule,
   ],
   controllers: [PreOrdersController],
   providers: [
     PreOrdersService,
     PreOrdersStaffService,
+    RestaurantAccessGuard,
     {
       provide: ORDERS_STAFF_SERVICE,
       useExisting: PreOrdersStaffService,

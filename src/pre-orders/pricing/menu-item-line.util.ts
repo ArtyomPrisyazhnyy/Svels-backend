@@ -2,6 +2,7 @@ import { ModifierSelectionType } from '../../common/enums/modifier-selection-typ
 import type { MenuItem } from '../../menu/entities/menu-item.entity';
 import type { MenuModifierGroup } from '../../menu/types/menu-modifier.types';
 import type { PreOrderItemModifierSnapshot } from '../types/pre-order-item-modifier.types';
+import { roundToKopecks } from './round-money.util';
 
 export type MenuItemPricingErrorCode = 'ITEM_UNAVAILABLE' | 'INVALID_MODIFIERS';
 
@@ -93,7 +94,7 @@ export function resolveMenuItemLine(
     }
   }
 
-  unitPrice = Math.round(unitPrice * 100) / 100;
+  unitPrice = roundToKopecks(unitPrice);
 
   return {
     unitPrice,
