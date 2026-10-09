@@ -6,6 +6,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -21,6 +22,12 @@ export class AuthController {
   @Throttle(ThrottleLimits.authLogin)
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
+  }
+
+  @Post('set-password')
+  @Throttle(ThrottleLimits.authLogin)
+  setPassword(@Body() dto: SetPasswordDto): Promise<AuthResponseDto> {
+    return this.authService.setPassword(dto);
   }
 
   @Post('google')

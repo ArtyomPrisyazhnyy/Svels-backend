@@ -104,6 +104,11 @@ describe('AuthService guest OTP', () => {
       telegram,
       smsRouter as unknown as SmsRouterService,
       config,
+      {
+        findValidTokenRecord: jest.fn(),
+        assertTokenUsable: jest.fn(),
+        markUsed: jest.fn(),
+      } as never,
     );
   });
 

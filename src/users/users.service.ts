@@ -14,6 +14,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { buildGuestUserEmail } from '../common/utils/normalize-phone.util';
 import { CreateGuestUserDto } from './dto/create-guest-user.dto';
+import { CreateRestaurantOwnerDto } from './dto/create-restaurant-owner.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { User } from './entities/user.entity';
@@ -65,6 +66,54 @@ export class UsersService implements IUsersService {
 
     const saved = await this.userRepository.save(user);
     return this.toResponse(saved);
+  }
+
+  async createRestaurantOwner(
+    dto: CreateRestaurantOwnerDto,
+  ): Promise<UserResponseDto> {
+    const existing = await this.findPlatformUserByEmail(dto.email);
+    if (existing) {
+      throw new ConflictException('Пользователь с таким email уже существует');
+    }
+
+    const user = this.userRepository.create({
+      email: dto.email.toLowerCase(),
+      phone: dto.phone ?? null,
+      passwordHash: null,
+      firstName: sanitizeText(dto.firstName),
+      lastName: sanitizeText(dto.lastName ?? '-'),
+      role: UserRole.RESTAURANT_ADMIN,
+      restaurantId: null,
+      authProvider: AuthProvider.LOCAL,
+      googleId: null,
+    });
+
+    const saved = await this.userRepository.save(user);
+    return this.toResponse(saved);
+  }
+
+  async bindRestaurant(ownerId: string, restaurantId: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: ownerId } });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    user.restaurantId = restaurantId;
+    user.role = UserRole.RESTAURANT_ADMIN;
+    await this.userRepository.save(user);
+  }
+
+  async findEmailsByUserIds(userIds: string[]): Promise<Map<string, string>> {
+    if (!userIds.length) {
+      return new Map();
+    }
+
+    const users = await this.userRepository.find({
+      where: { id: In(userIds) },
+      select: { id: true, email: true },
+    });
+
+    return new Map(users.map((user) => [user.id, user.email]));
   }
 
   async createGuest(

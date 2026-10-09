@@ -26,6 +26,18 @@ export class Restaurant {
   @Column({ type: 'varchar', length: 9, nullable: true })
   unp: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  legalName: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  legalAddress: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  contactPhone: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  contactEmail: string | null;
+
   @Column({
     type: 'enum',
     enum: RestaurantStatus,

@@ -43,6 +43,8 @@ import { RegisterDto } from './dto/register.dto';
 import { GoogleTokenService } from './google-token.service';
 import { UserRole } from '../common/enums/user-role.enum';
 import * as bcrypt from 'bcrypt';
+import { PasswordSetService } from './password-set.service';
+import { SetPasswordDto } from './dto/set-password.dto';
 
 interface GuestRegistrationTokenPayload {
   typ: 'guest_reg';
@@ -66,6 +68,7 @@ export class AuthService {
     private readonly telegramOtp: ITelegramOtpProvider,
     private readonly smsRouter: SmsRouterService,
     private readonly configService: ConfigService,
+    private readonly passwordSetService: PasswordSetService,
   ) {
     this.telegramWaitMs = this.configService.get<number>(
       'otp.telegramWaitMs',
@@ -86,6 +89,27 @@ export class AuthService {
     );
 
     return this.buildAuthResponse(user);
+  }
+
+  async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
+    const record = await this.passwordSetService.findValidTokenRecord(
+      dto.token,
+    );
+    this.passwordSetService.assertTokenUsable(record);
+
+    const user = await this.usersService.findById(record!.userId);
+    if (!user) {
+      throw new UnauthorizedException('Пользователь не найден');
+    }
+
+    const updated = await this.usersService.updatePassword(
+      user.id,
+      dto.password,
+    );
+
+    await this.passwordSetService.markUsed(record!.tokenHash);
+
+    return this.buildAuthResponse(updated);
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
