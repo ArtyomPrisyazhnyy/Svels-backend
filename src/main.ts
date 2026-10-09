@@ -1,3 +1,4 @@
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
@@ -10,6 +11,7 @@ import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { CorsOriginService } from './common/cors/cors-origin.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -17,11 +19,14 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  const corsOriginService = app.get(CorsOriginService);
+
   await app.register(helmet, {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
   await app.register(cors, {
-    origin: true,
+    origin: (origin, callback) =>
+      corsOriginService.validateOrigin(origin, callback),
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Guest-Id'],
   });
@@ -48,4 +53,4 @@ async function bootstrap() {
   });
 }
 
-bootstrap();
+void bootstrap();
