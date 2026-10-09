@@ -5,7 +5,8 @@ jest.mock('../payments/payments.service', () => ({
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FulfillmentType } from '../common/enums/fulfillment-type.enum';
 import { PaymentMethod } from '../common/enums/payment-method.enum';
-import { CreatePreOrderDto } from './dto/pre-order.dto';
+import { CreatePreOrderDto } from './dto/create-pre-order.dto';
+import * as minsTime from './pricing/minsk-time.util';
 import { PreOrdersService } from './pre-orders.service';
 
 describe('PreOrdersService.create validations', () => {
@@ -24,6 +25,9 @@ describe('PreOrdersService.create validations', () => {
   const paymentsService = {};
   const emitMock = jest.fn();
   const eventEmitter = { emit: emitMock } as unknown as EventEmitter2;
+  const schedulesService = {
+    getByRestaurant: jest.fn().mockResolvedValue([]),
+  };
 
   const service = new PreOrdersService(
     preOrderRepository as never,
@@ -34,6 +38,7 @@ describe('PreOrdersService.create validations', () => {
     dataSource as never,
     paymentsService as never,
     eventEmitter,
+    schedulesService as never,
   );
 
   const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';
@@ -177,6 +182,26 @@ describe('PreOrdersService.create validations', () => {
     expect(result.totalAmount).toBe(24);
     expect(result.items[0].unitPrice).toBe(12);
     expect(emitMock.mock.calls).not.toHaveLength(0);
+  });
+
+  it('rejects when restaurant is closed by schedule', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    jest.spyOn(minsTime, 'isRestaurantOpenAt').mockReturnValue(false);
+
+    await expect(
+      service.create(restaurantId, 'user', baseDto),
+    ).rejects.toMatchObject({
+      response: { code: 'RESTAURANT_CLOSED' },
+    });
   });
 
   it('rejects disabled payment method', async () => {

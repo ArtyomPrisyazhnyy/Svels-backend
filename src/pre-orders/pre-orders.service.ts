@@ -14,8 +14,8 @@ import { OrderSettingsService } from '../order-settings/order-settings.service';
 import type { PaymentResponseDto } from '../payments/dto/payment.dto';
 import { PaymentsService } from '../payments/payments.service';
 import { RestaurantLocation } from '../restaurants/entities/restaurant-location.entity';
+import { CreatePreOrderDto } from './dto/create-pre-order.dto';
 import {
-  CreatePreOrderDto,
   DeliveryAddressDto,
   OrderDto,
   PreOrderResponseDto,
@@ -31,10 +31,18 @@ import {
   mapPreOrderToResponseDto,
 } from './pre-order.mapper';
 import {
+  fulfillmentInstant,
+  parseRequestedAt,
+} from './pricing/requested-at.util';
+import { isRestaurantOpenAt } from './pricing/minsk-time.util';
+import {
   MenuItemPricingError,
   resolveMenuItemLine,
-} from './utils/menu-item-pricing.util';
+} from './pricing/menu-item-line.util';
+import { roundToKopecks } from './pricing/round-money.util';
+import { throwOrderNumberConflict } from './staff/pre-order-conflict.util';
 import { throwOrderBusinessError } from './utils/order-business-error.util';
+import { SchedulesService } from '../schedules/schedules.service';
 
 const MAX_ORDER_NUMBER_RETRIES = 5;
 const MY_ORDERS_LIMIT = 50;
@@ -54,6 +62,7 @@ export class PreOrdersService {
     private readonly dataSource: DataSource,
     private readonly paymentsService: PaymentsService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly schedulesService: SchedulesService,
   ) {}
 
   async create(
@@ -114,7 +123,16 @@ export class PreOrdersService {
       );
     }
 
-    const requestedAt = this.parseRequestedAt(dto.requestedAt);
+    const requestedAt = parseRequestedAt(dto.requestedAt);
+
+    const schedules = await this.schedulesService.getByRestaurant(restaurantId);
+    const fulfillmentTime = fulfillmentInstant(requestedAt);
+    if (!isRestaurantOpenAt(schedules, fulfillmentTime)) {
+      throwOrderBusinessError(
+        'RESTAURANT_CLOSED',
+        'Заведение сейчас не принимает заказы',
+      );
+    }
 
     const menu = await this.menuService.getMenuByRestaurant(restaurantId);
     const menuItemsById = new Map(
@@ -147,7 +165,7 @@ export class PreOrdersService {
     for (const line of pricedLines) {
       totalAmount += line.unitPrice * line.quantity;
     }
-    totalAmount = Math.round(totalAmount * 100) / 100;
+    totalAmount = roundToKopecks(totalAmount);
 
     const paymentStatus =
       dto.paymentMethod === PaymentMethod.ONLINE
@@ -336,30 +354,6 @@ export class PreOrdersService {
     return locationId;
   }
 
-  private parseRequestedAt(value: string | null | undefined): Date | null {
-    if (value === undefined || value === null) {
-      return null;
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      throwOrderBusinessError(
-        'INVALID_REQUESTED_AT',
-        'Некорректное время заказа',
-      );
-    }
-    const now = Date.now();
-    const min = now + 10 * 60 * 1000;
-    const max = now + 7 * 24 * 60 * 60 * 1000;
-    const ts = date.getTime();
-    if (ts < min || ts > max) {
-      throwOrderBusinessError(
-        'INVALID_REQUESTED_AT',
-        'Время заказа вне допустимого диапазона',
-      );
-    }
-    return date;
-  }
-
   private async saveOrderWithRetry(params: {
     restaurantId: string;
     userId: string;
@@ -446,9 +440,6 @@ export class PreOrdersService {
       }
     }
 
-    throwOrderBusinessError(
-      'ORDERS_PAUSED',
-      'Не удалось создать заказ, попробуйте снова',
-    );
+    throwOrderNumberConflict();
   }
 }
