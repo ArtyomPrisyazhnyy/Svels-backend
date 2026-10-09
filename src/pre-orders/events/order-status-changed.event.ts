@@ -13,6 +13,7 @@ export class OrderStatusChangedEvent {
     userId?: string;
     chatId?: string;
   };
+  userId?: string;
 
   constructor(params: {
     orderId: string;
@@ -21,6 +22,7 @@ export class OrderStatusChangedEvent {
     from: PreOrderStatus;
     to: PreOrderStatus;
     actor: OrderStatusChangedEvent['actor'];
+    userId?: string;
   }) {
     this.orderId = params.orderId;
     this.restaurantId = params.restaurantId;
@@ -28,5 +30,6 @@ export class OrderStatusChangedEvent {
     this.from = params.from;
     this.to = params.to;
     this.actor = params.actor;
+    this.userId = params.userId;
   }
 }
