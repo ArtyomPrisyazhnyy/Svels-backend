@@ -23,7 +23,7 @@ export class RestaurantAccessGuard implements CanActivate {
       throw new ForbiddenException('Ресторан не указан');
     }
 
-    if (user.role === UserRole.SUPER_ADMIN) {
+    if ((user.role as UserRole) === UserRole.SUPER_ADMIN) {
       return true;
     }
 

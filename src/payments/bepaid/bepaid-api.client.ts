@@ -199,6 +199,16 @@ export class BePaidApiClient {
     return `Basic ${token}`;
   }
 
+  private asPrimitiveString(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return '';
+  }
+
   private mapTransaction(
     transaction: Record<string, unknown> | undefined,
   ): BePaidTransactionResult {
@@ -212,10 +222,10 @@ export class BePaidApiClient {
         typeof transaction.parent_uid === 'string'
           ? transaction.parent_uid
           : null,
-      status: String(transaction.status ?? ''),
-      type: String(transaction.type ?? ''),
+      status: this.asPrimitiveString(transaction.status),
+      type: this.asPrimitiveString(transaction.type),
       amount: Number(transaction.amount ?? 0),
-      currency: String(transaction.currency ?? ''),
+      currency: this.asPrimitiveString(transaction.currency),
       trackingId:
         typeof transaction.tracking_id === 'string'
           ? transaction.tracking_id

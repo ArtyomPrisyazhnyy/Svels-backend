@@ -1,16 +1,13 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
-  ArrayNotEmpty,
   IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
-  Matches,
   Max,
   MaxLength,
   Min,
@@ -22,7 +19,7 @@ import { SeatKind } from '../../common/enums/seat-kind.enum';
 import { TableObjectType } from '../../common/enums/table-object-type.enum';
 import { TableShape } from '../../common/enums/table-shape.enum';
 import type { DecorLayoutData } from '../entities/decor-layout-data.type';
-import { IsValidDecorLayoutData, IsValidDecorObject } from './decor-validators';
+import { IsValidDecorLayoutData } from './decor-validators';
 
 /** Посадочное место стола (стул/диван/скамейка/табурет). */
 export class SeatDto {

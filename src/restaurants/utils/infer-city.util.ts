@@ -2,7 +2,7 @@
 export function inferCityFromAddress(address: string): string {
   const trimmed = address.trim();
   const named = trimmed.match(
-    /(?:г(?:ород)?\.?\s+)([А-ЯЁA-Z][А-Яа-яЁёA-Za-z\-]+)/,
+    /(?:г(?:ород)?\.?\s+)([А-ЯЁA-Z][А-Яа-яЁёA-Za-z-]+)/,
   );
   if (named?.[1]) {
     return named[1];

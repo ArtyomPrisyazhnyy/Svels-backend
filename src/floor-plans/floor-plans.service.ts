@@ -13,10 +13,7 @@ import { TableShape } from '../common/enums/table-shape.enum';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
-import type {
-  BookingSettingsSnapshot,
-  BookingSettingsService,
-} from '../booking-settings/booking-settings.service';
+import type { BookingSettingsService } from '../booking-settings/booking-settings.service';
 import type { DecorLayoutData } from './entities/decor-layout-data.type';
 import {
   CreateFloorPlanDto,

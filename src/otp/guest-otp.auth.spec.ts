@@ -57,19 +57,30 @@ describe('AuthService guest OTP', () => {
       delete: jest.fn().mockResolvedValue(undefined),
       assertCanResend: jest.fn(),
       generateCode: jest.fn().mockReturnValue('123456'),
-      createRecord: jest.fn().mockImplementation((params) => ({
-        codeHash: 'hash',
-        phone: params.phone,
-        restaurantId: params.restaurantId,
-        channel: params.channel,
-        createdAt: new Date().toISOString(),
-        resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
-        expiresAt: new Date(Date.now() + 300_000).toISOString(),
-        verifyAttempts: 0,
-        sendCount: params.sendCount,
-        country: params.country,
-        telegramRequestId: params.telegramRequestId,
-      })),
+      createRecord: jest
+        .fn()
+        .mockImplementation(
+          (params: {
+            restaurantId: string;
+            phone: string;
+            channel: string;
+            sendCount: number;
+            country: string;
+            telegramRequestId?: string;
+          }) => ({
+            codeHash: 'hash',
+            phone: params.phone,
+            restaurantId: params.restaurantId,
+            channel: params.channel,
+            createdAt: new Date().toISOString(),
+            resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+            expiresAt: new Date(Date.now() + 300_000).toISOString(),
+            verifyAttempts: 0,
+            sendCount: params.sendCount,
+            country: params.country,
+            telegramRequestId: params.telegramRequestId,
+          }),
+        ),
       verifyCode: jest.fn(),
       getTtlSeconds: jest.fn().mockReturnValue(300),
       getResendSeconds: jest.fn().mockReturnValue(60),
@@ -183,7 +194,7 @@ describe('AuthService guest OTP', () => {
       '127.0.0.1',
     );
 
-    expect(telegram.sendCode).not.toHaveBeenCalled();
+    expect(telegram.sendCode.mock.calls).toHaveLength(0);
     expect(smsRouter.sendOtp).toHaveBeenCalled();
     expect(result.channel).toBe('sms');
   });

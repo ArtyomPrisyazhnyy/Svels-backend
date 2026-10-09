@@ -90,7 +90,7 @@ describe('LeadTelegramNotifierService', () => {
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ ok: true }),
+      json: () => Promise.resolve({ ok: true }),
     });
     global.fetch = fetchMock as typeof fetch;
 
