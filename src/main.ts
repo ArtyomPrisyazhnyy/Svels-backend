@@ -12,12 +12,13 @@ import fastifyStatic from '@fastify/static';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { CorsOriginService } from './common/cors/cors-origin.service';
+import { resolveTrustProxy } from './config/trust-proxy';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      trustProxy: true,
+      trustProxy: resolveTrustProxy(),
     }),
   );
 

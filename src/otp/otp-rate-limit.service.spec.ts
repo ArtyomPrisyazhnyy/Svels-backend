@@ -1,6 +1,26 @@
 import { OtpRateLimitService } from './otp-rate-limit.service';
 import { CacheService } from '../cache/cache.service';
 
+const MEMORY_MAX_KEYS = 10_000;
+const HOUR_SECONDS = 3600;
+
+interface MemoryCounterEntry {
+  count: number;
+  expiresAtMs: number;
+  createdAtMs: number;
+}
+
+interface OtpRateLimitInternals {
+  memory: Map<string, MemoryCounterEntry>;
+  incrementMemory: (key: string, ttlSeconds: number) => void;
+  maybeSweepMemory: () => void;
+  lastMemorySweepAtMs: number;
+}
+
+function getInternals(service: OtpRateLimitService): OtpRateLimitInternals {
+  return service as unknown as OtpRateLimitInternals;
+}
+
 describe('OtpRateLimitService', () => {
   let cache: {
     isAvailable: jest.Mock;
@@ -38,6 +58,39 @@ describe('OtpRateLimitService', () => {
       'otp:rate:phone:60s:375291234567',
       60,
     );
+  });
+
+  it('purges expired in-memory entries when sweep runs', () => {
+    cache.isAvailable.mockReturnValue(false);
+    const local = new OtpRateLimitService(cache as unknown as CacheService);
+    const internals = getInternals(local);
+    const now = 5_000_000;
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+
+    internals.memory.set('expired', {
+      count: 2,
+      expiresAtMs: now - 1,
+      createdAtMs: now - 10_000,
+    });
+    internals.lastMemorySweepAtMs = 0;
+    internals.maybeSweepMemory();
+
+    expect(internals.memory.size).toBe(0);
+    jest.restoreAllMocks();
+  });
+
+  it('does not grow in-memory map beyond the hard cap', () => {
+    cache.isAvailable.mockReturnValue(false);
+    const local = new OtpRateLimitService(cache as unknown as CacheService);
+    const internals = getInternals(local);
+    const now = Date.now();
+    internals.lastMemorySweepAtMs = now;
+
+    for (let index = 0; index < MEMORY_MAX_KEYS + 50; index += 1) {
+      internals.incrementMemory(`otp:rate:test:${index}`, HOUR_SECONDS);
+    }
+
+    expect(internals.memory.size).toBeLessThanOrEqual(MEMORY_MAX_KEYS);
   });
 
   it('uses in-memory counters when redis is unavailable', async () => {

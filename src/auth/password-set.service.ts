@@ -117,7 +117,7 @@ export class PasswordSetService {
 
   private buildSetPasswordUrl(token: string): string {
     const base =
-      this.configService.get<string>('setPassword.urlBase')?.trim() ??
+      this.configService.get<string>('setPassword.urlBase')?.trim() ||
       'http://localhost:3001/auth/set-password';
     const separator = base.includes('?') ? '&' : '?';
     return `${base}${separator}token=${encodeURIComponent(token)}`;
