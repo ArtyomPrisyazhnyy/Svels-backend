@@ -7,6 +7,8 @@ import {
   Param,
   Patch,
   Post,
+  Put,
+  HttpCode,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -23,6 +25,10 @@ import {
   CreateMenuItemDto,
   UpdateMenuItemDto,
 } from './dto/menu.dto';
+import {
+  ReorderMenuCategoriesDto,
+  UpdateMenuCategoryDto,
+} from './dto/menu-category.dto';
 import { MenuService } from './menu.service';
 
 @Controller('restaurants/:restaurantId/menu')
@@ -70,6 +76,39 @@ export class MenuController {
     @Body() dto: CreateMenuCategoryDto,
   ) {
     return this.menuService.createCategory(restaurantId, dto);
+  }
+
+  @Patch('categories/:categoryId')
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.MANAGE_MENU)
+  updateCategory(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @Param('categoryId', ParseUuidV7Pipe) categoryId: string,
+    @Body() dto: UpdateMenuCategoryDto,
+  ) {
+    return this.menuService.updateCategory(restaurantId, categoryId, dto);
+  }
+
+  @Delete('categories/:categoryId')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.MANAGE_MENU)
+  deleteCategory(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @Param('categoryId', ParseUuidV7Pipe) categoryId: string,
+  ) {
+    return this.menuService.deleteCategory(restaurantId, categoryId);
+  }
+
+  @Put('categories/order')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.MANAGE_MENU)
+  reorderCategories(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @Body() dto: ReorderMenuCategoriesDto,
+  ) {
+    return this.menuService.reorderCategories(restaurantId, dto);
   }
 
   @Post('items')

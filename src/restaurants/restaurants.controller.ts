@@ -27,6 +27,7 @@ import {
   ReviewRegistrationDto,
   UpdateRestaurantDto,
 } from './dto/restaurant.dto';
+import { AdminCreateRestaurantDto } from './dto/admin-restaurant.dto';
 import { ResolveDomainQueryDto } from './dto/resolve-domain.dto';
 import { RestaurantsService } from './restaurants.service';
 
@@ -40,6 +41,27 @@ export class RestaurantsController {
   @Get()
   findAll() {
     return this.restaurantsService.findAll();
+  }
+
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  findAllForAdmin(@Query('search') search?: string) {
+    return this.restaurantsService.findAllForAdmin(search);
+  }
+
+  @Post('admin/create')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  createRestaurantByAdmin(@Body() dto: AdminCreateRestaurantDto) {
+    return this.restaurantsService.createRestaurantWithOwner(dto);
+  }
+
+  @Post('admin/:id/owner-invite')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  inviteRestaurantOwner(@Param('id', ParseUuidV7Pipe) id: string) {
+    return this.restaurantsService.inviteRestaurantOwner(id);
   }
 
   @Get('admin/registrations/pending')
