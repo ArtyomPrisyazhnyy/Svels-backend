@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
+import { DataSource, ILike, Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
@@ -54,6 +54,7 @@ export class RestaurantsService {
     @Inject(USERS_SERVICE)
     private readonly usersService: IUsersService,
     private readonly passwordSetService: PasswordSetService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async register(
@@ -395,24 +396,51 @@ export class RestaurantsService {
   async createRestaurantWithOwner(
     dto: AdminCreateRestaurantDto,
   ): Promise<AdminCreateRestaurantResponseDto> {
-    const owner = await this.usersService.createRestaurantOwner({
-      email: dto.owner.email,
-      firstName: dto.owner.firstName,
-      lastName: dto.owner.lastName,
-      phone: dto.owner.phone,
-    });
+    let customDomain: string | null = null;
+    if (dto.customDomain !== undefined && dto.customDomain !== null) {
+      customDomain = await this.resolveCustomDomainUpdate(
+        '00000000-0000-7000-8000-000000000000',
+        dto.customDomain,
+      );
+    }
 
-    const restaurant = await this.createByAdmin(
-      {
-        name: dto.name,
-        address: dto.address,
-        unp: dto.unp ?? null,
-        customDomain: dto.customDomain ?? null,
+    const { owner, savedRestaurant } = await this.dataSource.transaction(
+      async (manager) => {
+        const ownerUser =
+          await this.usersService.createRestaurantOwnerInTransaction(manager, {
+            email: dto.owner.email,
+            firstName: dto.owner.firstName,
+            lastName: dto.owner.lastName,
+            phone: dto.owner.phone,
+          });
+
+        const restaurant = manager.create(Restaurant, {
+          name: sanitizeText(dto.name),
+          description: null,
+          address: sanitizeText(dto.address),
+          unp: dto.unp ?? null,
+          customDomain,
+          ownerId: ownerUser.id,
+          status: RestaurantStatus.APPROVED,
+        });
+
+        const saved = await manager.save(Restaurant, restaurant);
+
+        await this.usersService.bindRestaurantInTransaction(
+          manager,
+          ownerUser.id,
+          saved.id,
+        );
+
+        return { owner: ownerUser, savedRestaurant: saved };
       },
-      owner.id,
     );
 
-    await this.usersService.bindRestaurant(owner.id, restaurant.id);
+    await this.locationsService.seedFromRegistration(savedRestaurant.id, [
+      { address: savedRestaurant.address },
+    ]);
+
+    const restaurant = this.toResponse(savedRestaurant);
 
     this.eventEmitter.emit(
       'restaurant.approved',

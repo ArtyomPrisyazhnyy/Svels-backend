@@ -9,7 +9,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '../auth/auth.service';
 import { PasswordSetService } from '../auth/password-set.service';
-import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
 import { UserRole } from '../common/enums/user-role.enum';
 import { MenuService } from '../menu/menu.service';
 import { RestaurantsService } from './restaurants.service';
@@ -25,16 +24,16 @@ describe('W2-B-ONB onboarding', () => {
       delete: jest.fn().mockResolvedValue(undefined),
       save,
       findOne: jest.fn(),
-      update: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(),
     };
 
     const config = {
       get: (key: string, fallback?: unknown) => {
-        if (key === 'SET_PASSWORD_URL_BASE') {
-          return 'https://app.test/set-password';
+        if (key === 'setPassword.urlBase') {
+          return 'https://app.test/auth/set-password';
         }
-        if (key === 'SET_PASSWORD_TTL_HOURS') {
-          return '24';
+        if (key === 'setPassword.ttlHours') {
+          return 24;
         }
         return fallback;
       },
@@ -49,7 +48,9 @@ describe('W2-B-ONB onboarding', () => {
     it('issues token with sha256 hash stored and URL', async () => {
       const result = await service.issueForUser('owner-id');
 
-      expect(result.setPasswordUrl).toContain('https://app.test/set-password');
+      expect(result.setPasswordUrl).toContain(
+        'https://app.test/auth/set-password',
+      );
       expect(result.setPasswordUrl).toContain('token=');
       expect(save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -91,10 +92,7 @@ describe('W2-B-ONB onboarding', () => {
       Pick<IUsersService, 'findById' | 'updatePassword'>
     >;
     let passwordSetService: jest.Mocked<
-      Pick<
-        PasswordSetService,
-        'findValidTokenRecord' | 'assertTokenUsable' | 'markUsed'
-      >
+      Pick<PasswordSetService, 'findValidTokenRecord' | 'claimToken'>
     >;
 
     beforeEach(() => {
@@ -105,8 +103,7 @@ describe('W2-B-ONB onboarding', () => {
 
       passwordSetService = {
         findValidTokenRecord: jest.fn(),
-        assertTokenUsable: jest.fn(),
-        markUsed: jest.fn().mockResolvedValue(undefined),
+        claimToken: jest.fn().mockResolvedValue(true),
       };
 
       const jwtService = { sign: jest.fn().mockReturnValue('access') };
@@ -164,7 +161,7 @@ describe('W2-B-ONB onboarding', () => {
         'owner-id',
         'long-enough',
       );
-      expect(passwordSetService.markUsed).toHaveBeenCalledWith('hash');
+      expect(passwordSetService.claimToken).toHaveBeenCalledWith('hash');
     });
   });
 
@@ -182,8 +179,29 @@ describe('W2-B-ONB onboarding', () => {
     };
     const usersService = {
       createRestaurantOwner: jest.fn(),
+      createRestaurantOwnerInTransaction: jest.fn(),
       bindRestaurant: jest.fn().mockResolvedValue(undefined),
+      bindRestaurantInTransaction: jest.fn().mockResolvedValue(undefined),
       findEmailsByUserIds: jest.fn(),
+    };
+    const dataSource = {
+      transaction: jest.fn(
+        async (cb: (manager: unknown) => Promise<unknown>) => {
+          const manager = {
+            create: jest.fn(
+              (_entity: unknown, value: Record<string, unknown>) => value,
+            ),
+            save: jest.fn((_entity: unknown, value: Record<string, unknown>) =>
+              Promise.resolve({
+                ...value,
+                id: 'rest-id',
+                createdAt: new Date(),
+              }),
+            ),
+          };
+          return cb(manager);
+        },
+      ),
     };
     const passwordSetService = {
       issueForUser: jest.fn().mockResolvedValue({
@@ -200,6 +218,7 @@ describe('W2-B-ONB onboarding', () => {
       locationsService as never,
       usersService as never,
       passwordSetService as never,
+      dataSource as never,
     );
 
     beforeEach(() => {
@@ -207,7 +226,7 @@ describe('W2-B-ONB onboarding', () => {
     });
 
     it('creates restaurant with owner invite', async () => {
-      usersService.createRestaurantOwner.mockResolvedValue({
+      usersService.createRestaurantOwnerInTransaction.mockResolvedValue({
         id: 'owner-id',
         email: 'owner@test.com',
         firstName: 'O',
@@ -216,27 +235,6 @@ describe('W2-B-ONB onboarding', () => {
         authProvider: 'local',
         createdAt: new Date(),
       });
-
-      const savedRestaurant = {
-        id: 'rest-id',
-        name: 'Cafe',
-        description: null,
-        address: 'Street 1',
-        unp: null,
-        legalName: null,
-        legalAddress: null,
-        contactPhone: null,
-        contactEmail: null,
-        status: RestaurantStatus.APPROVED,
-        ownerId: 'owner-id',
-        customDomain: null,
-        logoUrl: null,
-        logoWebpUrl: null,
-        createdAt: new Date(),
-      };
-
-      restaurantRepository.create.mockReturnValue(savedRestaurant);
-      restaurantRepository.save.mockResolvedValue(savedRestaurant);
 
       const result = await service.createRestaurantWithOwner({
         name: 'Cafe',
@@ -249,10 +247,8 @@ describe('W2-B-ONB onboarding', () => {
 
       expect(result.owner.id).toBe('owner-id');
       expect(result.setPasswordUrl).toContain('token=');
-      expect(usersService.bindRestaurant).toHaveBeenCalledWith(
-        'owner-id',
-        'rest-id',
-      );
+      expect(usersService.bindRestaurantInTransaction).toHaveBeenCalled();
+      expect(dataSource.transaction).toHaveBeenCalled();
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'restaurant.approved',
         expect.anything(),

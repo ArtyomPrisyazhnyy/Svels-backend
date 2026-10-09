@@ -39,6 +39,10 @@ describe('AuthService guest OTP', () => {
   let telegram: jest.Mocked<ITelegramOtpProvider>;
   let smsRouter: jest.Mocked<Pick<SmsRouterService, 'sendOtp'>>;
   let jwtService: { sign: jest.Mock; verify: jest.Mock };
+  let otpRateLimit: {
+    assertCanSendOtp: jest.Mock;
+    recordOtpSent: jest.Mock;
+  };
 
   beforeEach(() => {
     usersService = {
@@ -86,6 +90,11 @@ describe('AuthService guest OTP', () => {
       verify: jest.fn(),
     };
 
+    otpRateLimit = {
+      assertCanSendOtp: jest.fn().mockResolvedValue(undefined),
+      recordOtpSent: jest.fn().mockResolvedValue(undefined),
+    };
+
     const config = {
       get: (key: string, fallback?: unknown) => {
         if (key === 'otp.telegramWaitMs') {
@@ -107,8 +116,9 @@ describe('AuthService guest OTP', () => {
       {
         findValidTokenRecord: jest.fn(),
         assertTokenUsable: jest.fn(),
-        markUsed: jest.fn(),
+        claimToken: jest.fn(),
       } as never,
+      otpRateLimit as never,
     );
   });
 
@@ -119,9 +129,13 @@ describe('AuthService guest OTP', () => {
       status: 'delivered',
     });
 
-    const result = await authService.sendGuestOtp(restaurantId, {
-      phone: '+375291234567',
-    });
+    const result = await authService.sendGuestOtp(
+      restaurantId,
+      {
+        phone: '+375291234567',
+      },
+      '127.0.0.1',
+    );
 
     expect(result.channel).toBe('telegram');
     expect(smsRouter.sendOtp).not.toHaveBeenCalled();
@@ -135,9 +149,13 @@ describe('AuthService guest OTP', () => {
       error: 'NO_TG',
     });
 
-    const result = await authService.sendGuestOtp(restaurantId, {
-      phone: '+375291234567',
-    });
+    const result = await authService.sendGuestOtp(
+      restaurantId,
+      {
+        phone: '+375291234567',
+      },
+      '127.0.0.1',
+    );
 
     expect(result.channel).toBe('sms');
     expect(smsRouter.sendOtp).toHaveBeenCalledWith(phone, '123456');
@@ -157,9 +175,13 @@ describe('AuthService guest OTP', () => {
       country: 'BY',
     });
 
-    const result = await authService.resendGuestOtp(restaurantId, {
-      phone: '+375291234567',
-    });
+    const result = await authService.resendGuestOtp(
+      restaurantId,
+      {
+        phone: '+375291234567',
+      },
+      '127.0.0.1',
+    );
 
     expect(telegram.sendCode).not.toHaveBeenCalled();
     expect(smsRouter.sendOtp).toHaveBeenCalled();
@@ -175,7 +197,11 @@ describe('AuthService guest OTP', () => {
     });
 
     await expect(
-      authService.sendGuestOtp(restaurantId, { phone: '+375291234567' }),
+      authService.sendGuestOtp(
+        restaurantId,
+        { phone: '+375291234567' },
+        '127.0.0.1',
+      ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 

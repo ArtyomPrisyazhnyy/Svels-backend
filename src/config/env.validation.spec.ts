@@ -1,10 +1,12 @@
 import { validateEnv } from './env.validation';
 
 describe('validateEnv', () => {
+  const productionSecret = 'a'.repeat(32);
   const productionBase = {
     NODE_ENV: 'production',
-    JWT_SECRET: 'secure-production-secret',
-    BEPAY_CREDENTIALS_ENCRYPTION_KEY: 'bepay-key',
+    JWT_SECRET: productionSecret,
+    BEPAY_CREDENTIALS_ENCRYPTION_KEY: productionSecret,
+    REVALIDATE_SECRET: productionSecret,
     API_PUBLIC_URL: 'https://api.example.com',
     NEXT_SITE_URL: 'https://example.com',
   };
@@ -24,7 +26,18 @@ describe('validateEnv', () => {
         ...productionBase,
         JWT_SECRET: 'change-me-in-production',
       }),
-    ).toThrow(/JWT_SECRET must be set to a non-default value in production/);
+    ).toThrow(
+      /JWT_SECRET must not use the default or example value in production/,
+    );
+  });
+
+  it('fails in production with short JWT_SECRET', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        JWT_SECRET: 'short',
+      }),
+    ).toThrow(/JWT_SECRET must be at least 32 characters in production/);
   });
 
   it('fails in production with empty JWT_SECRET', () => {
@@ -33,7 +46,7 @@ describe('validateEnv', () => {
         ...productionBase,
         JWT_SECRET: '   ',
       }),
-    ).toThrow(/JWT_SECRET must be set to a non-default value in production/);
+    ).toThrow(/JWT_SECRET must be at least 32 characters in production/);
   });
 
   it('fails in production without BEPAY_CREDENTIALS_ENCRYPTION_KEY', () => {
@@ -42,7 +55,31 @@ describe('validateEnv', () => {
         ...productionBase,
         BEPAY_CREDENTIALS_ENCRYPTION_KEY: '',
       }),
-    ).toThrow(/BEPAY_CREDENTIALS_ENCRYPTION_KEY is required in production/);
+    ).toThrow(
+      /BEPAY_CREDENTIALS_ENCRYPTION_KEY must be at least 32 characters in production/,
+    );
+  });
+
+  it('fails in production with default REVALIDATE_SECRET', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        REVALIDATE_SECRET: 'dev-revalidate-secret',
+      }),
+    ).toThrow(
+      /REVALIDATE_SECRET must not use the default or example value in production/,
+    );
+  });
+
+  it('fails in production with default OTP_PEPPER', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        OTP_PEPPER: 'otp-dev-pepper',
+      }),
+    ).toThrow(
+      /OTP_PEPPER must not use the default or example value in production/,
+    );
   });
 
   it('fails in production without API_PUBLIC_URL', () => {

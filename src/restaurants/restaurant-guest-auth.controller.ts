@@ -1,4 +1,12 @@
-import { GoneException, Body, Controller, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  GoneException,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { Throttle } from '@nestjs/throttler';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { ThrottleLimits } from '../common/utils/throttle-limits.util';
@@ -27,9 +35,10 @@ export class RestaurantGuestAuthController {
   async sendOtp(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Body() dto: GuestOtpSendDto,
+    @Req() request: FastifyRequest,
   ): Promise<GuestOtpSendResponseDto> {
     await this.restaurantsService.ensureApproved(restaurantId);
-    return this.authService.sendGuestOtp(restaurantId, dto);
+    return this.authService.sendGuestOtp(restaurantId, dto, request.ip);
   }
 
   @Post('otp/resend')
@@ -37,9 +46,10 @@ export class RestaurantGuestAuthController {
   async resendOtp(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Body() dto: GuestOtpSendDto,
+    @Req() request: FastifyRequest,
   ): Promise<GuestOtpSendResponseDto> {
     await this.restaurantsService.ensureApproved(restaurantId);
-    return this.authService.resendGuestOtp(restaurantId, dto);
+    return this.authService.resendGuestOtp(restaurantId, dto, request.ip);
   }
 
   @Post('otp/verify')
