@@ -1,20 +1,15 @@
 import { createHash, randomInt, timingSafeEqual } from 'crypto';
 import {
   BadRequestException,
-  HttpException,
-  HttpStatus,
   Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { throwOtpRateLimited } from './otp-rate-limit.exception';
 import { ConfigService } from '@nestjs/config';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import type { GuestOtpRecord, OtpDeliveryChannel } from './types/otp.types';
-
-function tooManyRequests(message: string): never {
-  throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
-}
 
 @Injectable()
 export class OtpStoreService {
@@ -114,7 +109,9 @@ export class OtpStoreService {
     const availableAt = new Date(record.resendAvailableAt).getTime();
     if (Date.now() < availableAt) {
       const waitSec = Math.ceil((availableAt - Date.now()) / 1000);
-      tooManyRequests(`Повторная отправка будет доступна через ${waitSec} с`);
+      throwOtpRateLimited(
+        `Повторная отправка будет доступна через ${waitSec} с`,
+      );
     }
   }
 
@@ -173,7 +170,7 @@ export class OtpStoreService {
 
     if (record.verifyAttempts >= this.maxVerifyAttempts) {
       await this.delete(restaurantId, phone);
-      tooManyRequests('Слишком много попыток. Запросите новый код');
+      throwOtpRateLimited('Слишком много попыток. Запросите новый код');
     }
 
     const expected = Buffer.from(record.codeHash, 'utf8');

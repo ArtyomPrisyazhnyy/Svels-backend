@@ -50,7 +50,7 @@ export class MenuService {
 
     const categories = await this.categoryRepository.find({
       where: { restaurantId },
-      order: { sortOrder: 'ASC' },
+      order: { sortOrder: 'ASC', createdAt: 'ASC', id: 'ASC' },
     });
 
     const items = await this.itemRepository.find({
@@ -73,10 +73,16 @@ export class MenuService {
     restaurantId: string,
     dto: CreateMenuCategoryDto,
   ): Promise<MenuCategory> {
+    const maxSortOrder = await this.categoryRepository.maximum('sortOrder', {
+      restaurantId,
+    });
+    const nextSortOrder =
+      dto.sortOrder ?? (maxSortOrder === null ? 0 : maxSortOrder + 1);
+
     const category = this.categoryRepository.create({
       restaurantId,
       name: sanitizeText(dto.name),
-      sortOrder: dto.sortOrder ?? 0,
+      sortOrder: nextSortOrder,
     });
 
     const saved = await this.categoryRepository.save(category);

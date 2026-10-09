@@ -1,3 +1,4 @@
+import type { EntityManager } from 'typeorm';
 import { AuthProvider } from '../../common/enums/auth-provider.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { CreateGuestUserDto } from '../dto/create-guest-user.dto';
@@ -40,7 +41,16 @@ export interface IUsersService {
   createRestaurantOwner(
     dto: CreateRestaurantOwnerDto,
   ): Promise<UserResponseDto>;
+  createRestaurantOwnerInTransaction(
+    manager: EntityManager,
+    dto: CreateRestaurantOwnerDto,
+  ): Promise<UserResponseDto>;
   bindRestaurant(ownerId: string, restaurantId: string): Promise<void>;
+  bindRestaurantInTransaction(
+    manager: EntityManager,
+    ownerId: string,
+    restaurantId: string,
+  ): Promise<void>;
   findEmailsByUserIds(userIds: string[]): Promise<Map<string, string>>;
   findByEmail(email: string): Promise<PlatformAuthUserRecord | null>;
   findPlatformUserByEmail(

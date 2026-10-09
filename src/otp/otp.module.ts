@@ -5,6 +5,7 @@ import {
   TELEGRAM_OTP_PROVIDER,
 } from '../common/constants/injection-tokens';
 import { AppCacheModule } from '../cache/cache.module';
+import { OtpRateLimitService } from './otp-rate-limit.service';
 import { OtpStoreService } from './otp-store.service';
 import { DevSmsProvider } from './providers/dev-sms.provider';
 import { SmsByProvider } from './providers/sms-by.provider';
@@ -15,6 +16,7 @@ import { TelegramGatewayProvider } from './providers/telegram-gateway.provider';
 @Module({
   imports: [AppCacheModule],
   providers: [
+    OtpRateLimitService,
     OtpStoreService,
     DevSmsProvider,
     SmsRouterService,
@@ -26,6 +28,7 @@ import { TelegramGatewayProvider } from './providers/telegram-gateway.provider';
     { provide: SMSC_PROVIDER, useExisting: SmscProvider },
   ],
   exports: [
+    OtpRateLimitService,
     OtpStoreService,
     SmsRouterService,
     DevSmsProvider,

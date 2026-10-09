@@ -1,6 +1,13 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryColumn,
+} from 'typeorm';
 
 @Entity('password_set_tokens')
+@Index('IDX_password_set_tokens_userId', ['userId'])
 export class PasswordSetToken {
   @PrimaryColumn({ type: 'varchar', length: 64 })
   tokenHash: string;

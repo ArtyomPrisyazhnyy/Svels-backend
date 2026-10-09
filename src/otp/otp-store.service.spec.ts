@@ -49,7 +49,15 @@ describe('OtpStoreService', () => {
       sendCount: 1,
     });
 
-    expect(() => store.assertCanResend(record)).toThrow(HttpException);
+    try {
+      store.assertCanResend(record);
+      throw new Error('expected assertCanResend to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpException);
+      expect((error as HttpException).getResponse()).toMatchObject({
+        code: 'OTP_RATE_LIMITED',
+      });
+    }
   });
 
   it('verifies matching code and rejects wrong one', async () => {

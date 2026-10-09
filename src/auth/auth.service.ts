@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -26,6 +27,7 @@ import type { IUsersService } from '../users/interfaces/users-service.interface'
 import { UserCreatedEvent } from '../users/events/user-created.event';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import type { ITelegramOtpProvider } from '../otp/interfaces/telegram-otp-provider.interface';
+import { OtpRateLimitService } from '../otp/otp-rate-limit.service';
 import { OtpStoreService } from '../otp/otp-store.service';
 import { SmsRouterService } from '../otp/providers/sms-router.service';
 import type {
@@ -69,6 +71,7 @@ export class AuthService {
     private readonly smsRouter: SmsRouterService,
     private readonly configService: ConfigService,
     private readonly passwordSetService: PasswordSetService,
+    private readonly otpRateLimit: OtpRateLimitService,
   ) {
     this.telegramWaitMs = this.configService.get<number>(
       'otp.telegramWaitMs',
@@ -95,9 +98,35 @@ export class AuthService {
     const record = await this.passwordSetService.findValidTokenRecord(
       dto.token,
     );
-    this.passwordSetService.assertTokenUsable(record);
+    if (!record) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Ссылка недействительна',
+        error: 'Unauthorized',
+        code: 'INVALID_SET_PASSWORD_TOKEN',
+      });
+    }
 
-    const user = await this.usersService.findById(record!.userId);
+    if (record.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: 'Срок действия ссылки истёк',
+        error: 'Unauthorized',
+        code: 'SET_PASSWORD_TOKEN_EXPIRED',
+      });
+    }
+
+    const claimed = await this.passwordSetService.claimToken(record.tokenHash);
+    if (!claimed) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Ссылка уже была использована',
+        error: 'Conflict',
+        code: 'SET_PASSWORD_TOKEN_USED',
+      });
+    }
+
+    const user = await this.usersService.findById(record.userId);
     if (!user) {
       throw new UnauthorizedException('Пользователь не найден');
     }
@@ -106,8 +135,6 @@ export class AuthService {
       user.id,
       dto.password,
     );
-
-    await this.passwordSetService.markUsed(record!.tokenHash);
 
     return this.buildAuthResponse(updated);
   }
@@ -159,8 +186,10 @@ export class AuthService {
   async sendGuestOtp(
     restaurantId: string,
     dto: GuestOtpSendDto,
+    clientIp: string,
   ): Promise<GuestOtpSendResponseDto> {
     const phone = this.parseGuestPhone(dto.phone);
+    await this.otpRateLimit.assertCanSendOtp(phone, clientIp);
     const existing = await this.otpStore.get(restaurantId, phone);
     this.otpStore.assertCanResend(existing);
 
@@ -221,6 +250,7 @@ export class AuthService {
       telegramRequestId,
     });
     await this.otpStore.save(record);
+    await this.otpRateLimit.recordOtpSent(phone, clientIp);
 
     return {
       maskedPhone: maskPhone(phone),
@@ -233,8 +263,10 @@ export class AuthService {
   async resendGuestOtp(
     restaurantId: string,
     dto: GuestOtpSendDto,
+    clientIp: string,
   ): Promise<GuestOtpSendResponseDto> {
     const phone = this.parseGuestPhone(dto.phone);
+    await this.otpRateLimit.assertCanSendOtp(phone, clientIp);
     const existing = await this.otpStore.get(restaurantId, phone);
     this.otpStore.assertCanResend(existing);
 
@@ -264,6 +296,7 @@ export class AuthService {
       sendCount,
     });
     await this.otpStore.save(record);
+    await this.otpRateLimit.recordOtpSent(phone, clientIp);
 
     return {
       maskedPhone: maskPhone(phone),

@@ -7,7 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { In, IsNull, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, Repository } from 'typeorm';
 import { PLATFORM_AUTH_ROLES } from '../common/auth/restaurant-role-permissions';
 import { AuthProvider } from '../common/enums/auth-provider.enum';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -76,7 +76,48 @@ export class UsersService implements IUsersService {
       throw new ConflictException('Пользователь с таким email уже существует');
     }
 
-    const user = this.userRepository.create({
+    const saved = await this.userRepository.save(
+      this.buildRestaurantOwnerEntity(dto),
+    );
+    return this.toResponse(saved);
+  }
+
+  async createRestaurantOwnerInTransaction(
+    manager: EntityManager,
+    dto: CreateRestaurantOwnerDto,
+  ): Promise<UserResponseDto> {
+    const existing = await manager.findOne(User, {
+      where: { email: dto.email.toLowerCase() },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException('Пользователь с таким email уже существует');
+    }
+
+    const saved = await manager.save(
+      User,
+      this.buildRestaurantOwnerEntity(dto),
+    );
+    return this.toResponse(saved);
+  }
+
+  async bindRestaurantInTransaction(
+    manager: EntityManager,
+    ownerId: string,
+    restaurantId: string,
+  ): Promise<void> {
+    const user = await manager.findOne(User, { where: { id: ownerId } });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    user.restaurantId = restaurantId;
+    user.role = UserRole.RESTAURANT_ADMIN;
+    await manager.save(User, user);
+  }
+
+  private buildRestaurantOwnerEntity(dto: CreateRestaurantOwnerDto): User {
+    return this.userRepository.create({
       email: dto.email.toLowerCase(),
       phone: dto.phone ?? null,
       passwordHash: null,
@@ -87,9 +128,6 @@ export class UsersService implements IUsersService {
       authProvider: AuthProvider.LOCAL,
       googleId: null,
     });
-
-    const saved = await this.userRepository.save(user);
-    return this.toResponse(saved);
   }
 
   async bindRestaurant(ownerId: string, restaurantId: string): Promise<void> {

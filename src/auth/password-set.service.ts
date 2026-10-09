@@ -87,8 +87,20 @@ export class PasswordSetService {
     }
   }
 
-  async markUsed(tokenHash: string): Promise<void> {
-    await this.tokensRepository.update({ tokenHash }, { usedAt: new Date() });
+  /**
+   * Атомарно помечает токен использованным. Возвращает false, если уже использован.
+   */
+  async claimToken(tokenHash: string): Promise<boolean> {
+    const result = await this.tokensRepository
+      .createQueryBuilder()
+      .update(PasswordSetToken)
+      .set({ usedAt: () => 'now()' })
+      .where('tokenHash = :tokenHash', { tokenHash })
+      .andWhere('"usedAt" IS NULL')
+      .andWhere('"expiresAt" > now()')
+      .execute();
+
+    return (result.affected ?? 0) > 0;
   }
 
   private hashToken(token: string): string {
@@ -96,15 +108,17 @@ export class PasswordSetService {
   }
 
   private getTtlHours(): number {
-    const raw = this.configService.get<string>('SET_PASSWORD_TTL_HOURS');
-    const parsed = parseInt(raw ?? '72', 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 72;
+    const configured = this.configService.get<number>('setPassword.ttlHours');
+    if (typeof configured === 'number' && configured > 0) {
+      return configured;
+    }
+    return 72;
   }
 
   private buildSetPasswordUrl(token: string): string {
     const base =
-      this.configService.get<string>('SET_PASSWORD_URL_BASE')?.trim() ??
-      'http://localhost/set-password';
+      this.configService.get<string>('setPassword.urlBase')?.trim() ??
+      'http://localhost:3001/auth/set-password';
     const separator = base.includes('?') ? '&' : '?';
     return `${base}${separator}token=${encodeURIComponent(token)}`;
   }

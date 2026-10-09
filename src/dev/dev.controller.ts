@@ -1,30 +1,19 @@
 import {
   BadRequestException,
   Controller,
-  ForbiddenException,
   Get,
   NotFoundException,
   Query,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { DevSmsProvider } from '../otp/providers/dev-sms.provider';
 
 /**
- * Инструменты только для non-production (Playwright e2e).
- * В production все эндпоинты отвечают 403.
+ * Инструменты только для локальной разработки (Playwright e2e).
+ * Модуль регистрируется только при ENABLE_DEV_ENDPOINTS=true.
  */
 @Controller('dev')
 export class DevController {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly devSms: DevSmsProvider,
-  ) {}
-
-  private assertNonProduction(): void {
-    if (this.configService.get<string>('NODE_ENV') === 'production') {
-      throw new ForbiddenException('Dev endpoints are disabled in production');
-    }
-  }
+  constructor(private readonly devSms: DevSmsProvider) {}
 
   @Get('last-otp')
   getLastOtp(@Query('phone') phone?: string): {
@@ -32,8 +21,6 @@ export class DevController {
     code: string;
     at: string;
   } {
-    this.assertNonProduction();
-
     if (!phone?.trim()) {
       throw new BadRequestException('phone is required');
     }

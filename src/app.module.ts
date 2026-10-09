@@ -6,7 +6,8 @@ import { SentryModule } from '@sentry/nestjs/setup';
 import { APP_GUARD } from '@nestjs/core';
 import appConfig from './config/app.config';
 import { validateEnv } from './config/env.validation';
-import { isDevOrTestNodeEnv } from './config/is-dev-or-test-env';
+import { isDevEndpointsEnabled } from './config/is-dev-endpoints-enabled';
+import setPasswordConfig from './config/set-password.config';
 import databaseConfig from './config/database.config';
 import googleConfig from './config/google.config';
 import jwtConfig from './config/jwt.config';
@@ -48,7 +49,7 @@ import { HealthModule } from './health/health.module';
 import { CorsModule } from './common/cors/cors.module';
 import { AppThrottlerModule } from './config/throttler.config';
 
-const includeDevModule = isDevOrTestNodeEnv(process.env.NODE_ENV);
+const includeDevModule = isDevEndpointsEnabled(process.env.NODE_ENV);
 const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
 
 @Module({
@@ -67,6 +68,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
         otpConfig,
         leadsConfig,
         bepaidConfig,
+        setPasswordConfig,
       ],
     }),
     AppThrottlerModule,

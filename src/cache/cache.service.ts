@@ -198,6 +198,41 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     return Boolean(this.client) && this.enabled && !this.degraded;
   }
 
+  async getCounter(key: string): Promise<number> {
+    if (!(await this.ensureUsable())) {
+      return 0;
+    }
+
+    try {
+      const raw = await this.client!.get(key);
+      if (!raw) {
+        return 0;
+      }
+      const parsed = parseInt(raw, 10);
+      return Number.isFinite(parsed) ? parsed : 0;
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+      return 0;
+    }
+  }
+
+  async incrementCounter(key: string, ttlSeconds: number): Promise<number> {
+    if (!(await this.ensureUsable())) {
+      return 0;
+    }
+
+    try {
+      const count = await this.client!.incr(key);
+      if (count === 1) {
+        await this.client!.expire(key, ttlSeconds);
+      }
+      return count;
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+      return 0;
+    }
+  }
+
   async getRequired<T>(key: string): Promise<T | null> {
     await this.assertAvailable();
     const raw = await this.client!.get(key);

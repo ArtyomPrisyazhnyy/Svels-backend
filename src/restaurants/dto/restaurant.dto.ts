@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsEmail,
   IsOptional,
   IsString,
   Matches,
@@ -120,8 +121,8 @@ export class UpdateRestaurantDto {
   contactPhone?: string | null;
 
   @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @IsString()
+  @ValidateIf((_, value) => value !== null && value !== '')
+  @IsEmail()
   contactEmail?: string | null;
 }
 
