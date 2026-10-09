@@ -1,10 +1,31 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
-  "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
-  "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
-  },
-  "transformIgnorePatterns": ["node_modules/(?!uuid/)"]
+  "maxWorkers": 1,
+  "projects": [
+    {
+      "displayName": "e2e",
+      "moduleFileExtensions": ["js", "json", "ts"],
+      "rootDir": ".",
+      "testEnvironment": "node",
+      "testRegex": "\\.e2e-spec\\.ts$",
+      "testPathIgnorePatterns": ["dev-endpoints-enabled\\.e2e-spec\\.ts$"],
+      "globalSetup": "<rootDir>/test/global-setup.ts",
+      "transform": {
+        "^.+\\.(t|j)s$": "ts-jest"
+      },
+      "transformIgnorePatterns": ["node_modules/(?!uuid/)"]
+    },
+    {
+      "displayName": "e2e-dev",
+      "moduleFileExtensions": ["js", "json", "ts"],
+      "rootDir": ".",
+      "testEnvironment": "node",
+      "testMatch": ["<rootDir>/test/dev-endpoints-enabled.e2e-spec.ts"],
+      "setupFiles": ["<rootDir>/test/setup-dev-enabled-env.ts"],
+      "globalSetup": "<rootDir>/test/global-setup.ts",
+      "transform": {
+        "^.+\\.(t|j)s$": "ts-jest"
+      },
+      "transformIgnorePatterns": ["node_modules/(?!uuid/)"]
+    }
+  ]
 }
