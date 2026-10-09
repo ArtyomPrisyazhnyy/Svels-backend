@@ -38,6 +38,10 @@ export interface IUsersService {
     dto: CreateGuestUserDto,
     restaurantId: string,
   ): Promise<UserResponseDto>;
+  createTelegramGuest(
+    dto: { telegramUserId: string; firstName: string; lastName: string },
+    restaurantId: string,
+  ): Promise<UserResponseDto>;
   createRestaurantOwner(
     dto: CreateRestaurantOwnerDto,
   ): Promise<UserResponseDto>;
