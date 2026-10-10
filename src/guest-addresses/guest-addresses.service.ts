@@ -34,10 +34,7 @@ export class GuestAddressesService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async list(
-    restaurantId: string,
-    userId: string,
-  ): Promise<GuestAddressDto[]> {
+  async list(restaurantId: string, userId: string): Promise<GuestAddressDto[]> {
     const rows = await this.guestAddressRepository.find({
       where: { restaurantId, userId },
       order: {
@@ -85,8 +82,7 @@ export class GuestAddressesService {
       throwAddressLimit();
     }
 
-    const shouldBeDefault =
-      dto.isDefault === true || activeCount === 0;
+    const shouldBeDefault = dto.isDefault === true || activeCount === 0;
 
     const saved = await this.dataSource.transaction(async (manager) => {
       if (shouldBeDefault) {
@@ -124,7 +120,11 @@ export class GuestAddressesService {
     addressId: string,
     dto: UpdateGuestAddressDto,
   ): Promise<GuestAddressDto> {
-    const address = await this.findOwnedAddress(restaurantId, userId, addressId);
+    const address = await this.findOwnedAddress(
+      restaurantId,
+      userId,
+      addressId,
+    );
     if (!address) {
       throwAddressNotFound();
     }
@@ -177,7 +177,11 @@ export class GuestAddressesService {
     userId: string,
     addressId: string,
   ): Promise<void> {
-    const address = await this.findOwnedAddress(restaurantId, userId, addressId);
+    const address = await this.findOwnedAddress(
+      restaurantId,
+      userId,
+      addressId,
+    );
     if (!address) {
       throwAddressNotFound();
     }
@@ -216,7 +220,11 @@ export class GuestAddressesService {
     userId: string,
     addressId: string,
   ): Promise<GuestAddressDto> {
-    const address = await this.findOwnedAddress(restaurantId, userId, addressId);
+    const address = await this.findOwnedAddress(
+      restaurantId,
+      userId,
+      addressId,
+    );
     if (!address) {
       throwAddressNotFound();
     }
@@ -240,7 +248,11 @@ export class GuestAddressesService {
     addressId: string,
     now: Date,
   ): Promise<DeliveryAddressDto | null> {
-    const address = await this.findOwnedAddress(restaurantId, userId, addressId);
+    const address = await this.findOwnedAddress(
+      restaurantId,
+      userId,
+      addressId,
+    );
     if (!address) {
       return null;
     }
@@ -351,8 +363,7 @@ export class GuestAddressesService {
     });
     return (
       rows.find(
-        (row) =>
-          addressDedupeKey(row.street, row.house, row.apartment) === key,
+        (row) => addressDedupeKey(row.street, row.house, row.apartment) === key,
       ) ?? null
     );
   }

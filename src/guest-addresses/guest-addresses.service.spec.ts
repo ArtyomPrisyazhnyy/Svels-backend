@@ -7,31 +7,42 @@ describe('GuestAddressesService', () => {
   const userId = '019efb61-5d8e-7058-b838-6f2696cb4205';
   const otherUserId = '019efb61-5d8e-7058-b838-6f2696cb4206';
 
-  let repository: jest.Mocked<Pick<Repository<GuestAddress>, 'find' | 'findOne' | 'count' | 'save'>>;
+  let repository: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    count: jest.Mock;
+    save: jest.Mock;
+  };
+  let manager: {
+    create: jest.Mock;
+    save: jest.Mock;
+    update: jest.Mock;
+    softRemove: jest.Mock;
+    find: jest.Mock;
+  };
   let dataSource: { transaction: jest.Mock };
   let service: GuestAddressesService;
 
-  const baseAddress = (): GuestAddress =>
-    ({
-      id: '019efb61-5d8e-7058-b838-6f2696cb4300',
-      restaurantId,
-      userId,
-      label: null,
-      street: 'Ленина',
-      house: '1',
-      apartment: null,
-      entrance: null,
-      floor: null,
-      intercom: null,
-      comment: null,
-      lat: null,
-      lng: null,
-      isDefault: true,
-      lastUsedAt: null,
-      createdAt: new Date('2026-01-01T10:00:00.000Z'),
-      updatedAt: new Date('2026-01-01T10:00:00.000Z'),
-      deletedAt: null,
-    }) as GuestAddress;
+  const baseAddress = (): GuestAddress => ({
+    id: '019efb61-5d8e-7058-b838-6f2696cb4300',
+    restaurantId,
+    userId,
+    label: null,
+    street: 'Ленина',
+    house: '1',
+    apartment: null,
+    entrance: null,
+    floor: null,
+    intercom: null,
+    comment: null,
+    lat: null,
+    lng: null,
+    isDefault: true,
+    lastUsedAt: null,
+    createdAt: new Date('2026-01-01T10:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+    deletedAt: null,
+  });
 
   beforeEach(() => {
     repository = {
@@ -40,22 +51,21 @@ describe('GuestAddressesService', () => {
       count: jest.fn(),
       save: jest.fn(),
     };
-    dataSource = {
-      transaction: jest.fn(async (fn) =>
-        fn({
-          create: jest.fn((_entity: unknown, data: unknown) => data),
-          save: jest.fn((entity: GuestAddress) =>
-            Promise.resolve({
-              ...entity,
-              createdAt: new Date('2026-01-01T10:00:00.000Z'),
-              updatedAt: new Date('2026-01-01T10:00:00.000Z'),
-            }),
-          ),
-          update: jest.fn(),
-          softRemove: jest.fn(),
-          find: jest.fn(),
+    manager = {
+      create: jest.fn((_entity: unknown, data: GuestAddress) => data),
+      save: jest.fn((entity: GuestAddress) =>
+        Promise.resolve({
+          ...entity,
+          createdAt: new Date('2026-01-01T10:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T10:00:00.000Z'),
         }),
       ),
+      update: jest.fn(),
+      softRemove: jest.fn(),
+      find: jest.fn(),
+    };
+    dataSource = {
+      transaction: jest.fn((fn: (m: typeof manager) => unknown) => fn(manager)),
     };
     service = new GuestAddressesService(
       repository as unknown as Repository<GuestAddress>,
@@ -102,9 +112,14 @@ describe('GuestAddressesService', () => {
     repository.findOne.mockResolvedValue(null);
 
     await expect(
-      service.update(restaurantId, userId, '019efb61-5d8e-7058-b838-6f2696cb4999', {
-        street: 'X',
-      }),
+      service.update(
+        restaurantId,
+        userId,
+        '019efb61-5d8e-7058-b838-6f2696cb4999',
+        {
+          street: 'X',
+        },
+      ),
     ).rejects.toMatchObject({ response: { code: 'ADDRESS_NOT_FOUND' } });
   });
 
@@ -117,21 +132,12 @@ describe('GuestAddressesService', () => {
       lastUsedAt: new Date('2026-02-01T10:00:00.000Z'),
     };
     repository.findOne.mockResolvedValue(current);
-
-    const managerFind = jest.fn().mockResolvedValue([next]);
-    const managerSave = jest.fn().mockResolvedValue(next);
-    dataSource.transaction.mockImplementation(async (fn) =>
-      fn({
-        softRemove: jest.fn(),
-        find: managerFind,
-        save: managerSave,
-        update: jest.fn(),
-      }),
-    );
+    manager.find.mockResolvedValue([next]);
+    manager.save.mockResolvedValue(next);
 
     await service.remove(restaurantId, userId, current.id);
 
-    expect(managerSave).toHaveBeenCalledWith(
+    expect(manager.save).toHaveBeenCalledWith(
       expect.objectContaining({ id: next.id, isDefault: true }),
     );
   });
@@ -139,18 +145,13 @@ describe('GuestAddressesService', () => {
   it('sets default in a transaction', async () => {
     const address = { ...baseAddress(), isDefault: false };
     repository.findOne.mockResolvedValue(address);
-    const managerUpdate = jest.fn();
-    const managerSave = jest.fn().mockImplementation((entity) => entity);
-    dataSource.transaction.mockImplementation(async (fn) =>
-      fn({
-        update: managerUpdate,
-        save: managerSave,
-      }),
+    manager.save.mockImplementation((entity: GuestAddress) =>
+      Promise.resolve(entity),
     );
 
     const dto = await service.setDefault(restaurantId, userId, address.id);
 
-    expect(managerUpdate).toHaveBeenCalled();
+    expect(manager.update).toHaveBeenCalled();
     expect(dto.isDefault).toBe(true);
   });
 

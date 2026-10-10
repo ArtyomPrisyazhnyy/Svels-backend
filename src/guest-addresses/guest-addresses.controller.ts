@@ -51,9 +51,7 @@ export class GuestAddressesController {
       user.id,
       dto,
     );
-    reply.status(
-      result.created ? HttpStatus.CREATED : HttpStatus.OK,
-    );
+    reply.status(result.created ? HttpStatus.CREATED : HttpStatus.OK);
     return result.dto;
   }
 
