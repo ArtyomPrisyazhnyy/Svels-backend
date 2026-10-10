@@ -28,6 +28,25 @@ describe('PreOrdersService.create validations', () => {
   const schedulesService = {
     getByRestaurant: jest.fn().mockResolvedValue([]),
   };
+  const guestAddressLookup = {
+    findSnapshotForOrder: jest.fn<
+      Promise<{ street: string; house: string } | null>,
+      [string, string, string]
+    >(),
+    touchLastUsedAt: jest.fn<Promise<void>, [string, string, string, Date]>(),
+    touchOrSave: jest.fn<
+      Promise<void>,
+      [
+        {
+          userId: string;
+          restaurantId: string;
+          snapshot: { street: string; house: string };
+          label?: string;
+          now: Date;
+        },
+      ]
+    >(),
+  };
 
   const service = new PreOrdersService(
     preOrderRepository as never,
@@ -39,12 +58,14 @@ describe('PreOrdersService.create validations', () => {
     paymentsService as never,
     eventEmitter,
     schedulesService as never,
+    guestAddressLookup,
   );
 
   const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(minsTime, 'isRestaurantOpenAt').mockReturnValue(true);
     menuService.getMenuByRestaurant.mockResolvedValue({ categories: [] });
   });
 
@@ -202,6 +223,266 @@ describe('PreOrdersService.create validations', () => {
     ).rejects.toMatchObject({
       response: { code: 'RESTAURANT_CLOSED' },
     });
+  });
+
+  it('uses addressId snapshot and touches lastUsedAt', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+    guestAddressLookup.findSnapshotForOrder.mockResolvedValue({
+      street: 'Сохранённая',
+      house: '5',
+    });
+    dataSource.transaction.mockImplementation(
+      <T>(fn: (manager: unknown) => Promise<T>) =>
+        fn({
+          query: jest.fn().mockResolvedValue([{ next: 1 }]),
+          create: jest.fn(
+            (_entity: unknown, data: Record<string, unknown>) => data,
+          ),
+          save: jest.fn((entity: Record<string, unknown>) =>
+            Promise.resolve({
+              ...entity,
+              id: '019efb61-5d8e-7058-b838-6f2696cb4999',
+              orderNumber: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }),
+          ),
+        }),
+    );
+    preOrderItemRepository.find.mockResolvedValue([]);
+
+    await service.create(restaurantId, 'user', {
+      ...baseDto,
+      addressId: '019efb61-5d8e-7058-b838-6f2696cb4100',
+      deliveryAddress: { street: 'Игнор', house: '1' },
+    });
+
+    expect(guestAddressLookup.findSnapshotForOrder).toHaveBeenCalled();
+    expect(guestAddressLookup.touchLastUsedAt).toHaveBeenCalled();
+    expect(guestAddressLookup.touchOrSave).not.toHaveBeenCalled();
+  });
+
+  it('rejects foreign addressId with ADDRESS_NOT_FOUND', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    guestAddressLookup.findSnapshotForOrder.mockResolvedValue(null);
+
+    await expect(
+      service.create(restaurantId, 'user', {
+        ...baseDto,
+        addressId: '019efb61-5d8e-7058-b838-6f2696cb4100',
+        deliveryAddress: undefined,
+      }),
+    ).rejects.toMatchObject({
+      response: { code: 'ADDRESS_NOT_FOUND' },
+    });
+  });
+
+  it('saveAddress calls touchOrSave after order without failing on limit', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+    dataSource.transaction.mockImplementation(
+      <T>(fn: (manager: unknown) => Promise<T>) =>
+        fn({
+          query: jest.fn().mockResolvedValue([{ next: 1 }]),
+          create: jest.fn(
+            (_entity: unknown, data: Record<string, unknown>) => data,
+          ),
+          save: jest.fn((entity: Record<string, unknown>) =>
+            Promise.resolve({
+              ...entity,
+              id: '019efb61-5d8e-7058-b838-6f2696cb4999',
+              orderNumber: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }),
+          ),
+        }),
+    );
+    preOrderItemRepository.find.mockResolvedValue([]);
+    guestAddressLookup.touchOrSave.mockResolvedValue(undefined);
+
+    await service.create(restaurantId, 'user', {
+      ...baseDto,
+      saveAddress: true,
+      addressLabel: 'Дом',
+    });
+
+    expect(guestAddressLookup.touchOrSave).toHaveBeenCalled();
+    const saveCall = guestAddressLookup.touchOrSave.mock.calls[0][0];
+    expect(saveCall.userId).toBe('user');
+    expect(saveCall.restaurantId).toBe(restaurantId);
+    expect(saveCall.label).toBe('Дом');
+    expect(saveCall.snapshot).toMatchObject({ street: 'Ленина', house: '1' });
+  });
+
+  it('ignores address fields for non-delivery', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+    dataSource.transaction.mockImplementation(
+      <T>(fn: (manager: unknown) => Promise<T>) =>
+        fn({
+          query: jest.fn().mockResolvedValue([{ next: 1 }]),
+          create: jest.fn(
+            (_entity: unknown, data: Record<string, unknown>) => data,
+          ),
+          save: jest.fn((entity: Record<string, unknown>) =>
+            Promise.resolve({
+              ...entity,
+              id: '019efb61-5d8e-7058-b838-6f2696cb4999',
+              orderNumber: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }),
+          ),
+        }),
+    );
+    preOrderItemRepository.find.mockResolvedValue([]);
+
+    await service.create(restaurantId, 'user', {
+      ...baseDto,
+      fulfillmentType: FulfillmentType.TAKEAWAY,
+      deliveryAddress: undefined,
+      addressId: '019efb61-5d8e-7058-b838-6f2696cb4100',
+      saveAddress: true,
+    });
+
+    expect(guestAddressLookup.findSnapshotForOrder).not.toHaveBeenCalled();
+    expect(guestAddressLookup.touchLastUsedAt).not.toHaveBeenCalled();
+    expect(guestAddressLookup.touchOrSave).not.toHaveBeenCalled();
+  });
+
+  it('does not fail order when touchOrSave throws', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+    dataSource.transaction.mockImplementation(
+      <T>(fn: (manager: unknown) => Promise<T>) =>
+        fn({
+          query: jest.fn().mockResolvedValue([{ next: 1 }]),
+          create: jest.fn(
+            (_entity: unknown, data: Record<string, unknown>) => data,
+          ),
+          save: jest.fn((entity: Record<string, unknown>) =>
+            Promise.resolve({
+              ...entity,
+              id: '019efb61-5d8e-7058-b838-6f2696cb4999',
+              orderNumber: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }),
+          ),
+        }),
+    );
+    preOrderItemRepository.find.mockResolvedValue([]);
+    guestAddressLookup.touchOrSave.mockRejectedValue(new Error('db'));
+
+    await expect(
+      service.create(restaurantId, 'user', {
+        ...baseDto,
+        saveAddress: true,
+      }),
+    ).resolves.toBeDefined();
   });
 
   it('rejects disabled payment method', async () => {

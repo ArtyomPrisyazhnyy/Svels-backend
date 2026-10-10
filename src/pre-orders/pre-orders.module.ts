@@ -6,6 +6,7 @@ import { MenuModule } from '../menu/menu.module';
 import { OrderSettingsModule } from '../order-settings/order-settings.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { SchedulesModule } from '../schedules/schedules.module';
+import { GuestAddressesModule } from '../guest-addresses/guest-addresses.module';
 import { RestaurantLocation } from '../restaurants/entities/restaurant-location.entity';
 import { PreOrderItem } from './entities/pre-order-item.entity';
 import { PreOrder } from './entities/pre-order.entity';
@@ -20,6 +21,7 @@ import { PreOrdersService } from './pre-orders.service';
     OrderSettingsModule,
     PaymentsModule,
     SchedulesModule,
+    GuestAddressesModule,
   ],
   controllers: [PreOrdersController],
   providers: [
