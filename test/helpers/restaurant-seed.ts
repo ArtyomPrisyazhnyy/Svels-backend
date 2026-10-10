@@ -115,6 +115,32 @@ export async function seedRestaurantBase(
   return { restaurantId, ownerId, menuItemId, categoryId };
 }
 
+export async function insertRestaurantGuest(
+  dataSource: DataSource,
+  runId: number | string,
+  restaurantId: string,
+  label: string,
+): Promise<{ userId: string; email: string }> {
+  const userId = uuidv7();
+  const email = `guest-${label}-${runId}@e2e.test`;
+  const passwordHash = await bcrypt.hash('test-pass-12', 12);
+  await dataSource.query(
+    `INSERT INTO users (id, email, phone, "passwordHash", "firstName", "lastName", role, "authProvider", "restaurantId", "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, 'Guest', $6, $7, $8, now(), now())`,
+    [
+      userId,
+      email,
+      `+37529000000${String(label).slice(-1)}`,
+      passwordHash,
+      label,
+      UserRole.USER,
+      AuthProvider.LOCAL,
+      restaurantId,
+    ],
+  );
+  return { userId, email };
+}
+
 export async function insertStaffUser(
   dataSource: DataSource,
   runId: number | string,

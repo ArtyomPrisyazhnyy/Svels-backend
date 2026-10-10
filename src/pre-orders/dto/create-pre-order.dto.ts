@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsISO8601,
@@ -75,11 +76,27 @@ export class CreatePreOrderDto {
   locationId?: string;
 
   @ValidateIf(
-    (o: CreatePreOrderDto) => o.fulfillmentType === FulfillmentType.DELIVERY,
+    (o: CreatePreOrderDto) =>
+      o.fulfillmentType === FulfillmentType.DELIVERY &&
+      !o.addressId &&
+      o.deliveryAddress != null,
   )
   @ValidateNested()
   @Type(() => DeliveryAddressDto)
   deliveryAddress?: DeliveryAddressDto;
+
+  @IsOptional()
+  @IsUuidV7()
+  addressId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  saveAddress?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  addressLabel?: string;
 
   @IsOptional()
   @IsISO8601()

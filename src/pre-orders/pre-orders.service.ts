@@ -2,7 +2,10 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { MENU_SERVICE } from '../common/constants/injection-tokens';
+import {
+  GUEST_ADDRESS_LOOKUP,
+  MENU_SERVICE,
+} from '../common/constants/injection-tokens';
 import { FulfillmentType } from '../common/enums/fulfillment-type.enum';
 import { OrderPaymentStatus } from '../common/enums/order-payment-status.enum';
 import { PaymentMethod } from '../common/enums/payment-method.enum';
@@ -43,6 +46,7 @@ import { roundToKopecks } from './pricing/round-money.util';
 import { throwOrderNumberConflict } from './staff/pre-order-conflict.util';
 import { throwOrderBusinessError } from './utils/order-business-error.util';
 import { SchedulesService } from '../schedules/schedules.service';
+import type { GuestAddressLookup } from './interfaces/guest-address-lookup.interface';
 
 const MAX_ORDER_NUMBER_RETRIES = 5;
 const MY_ORDERS_LIMIT = 50;
@@ -63,6 +67,8 @@ export class PreOrdersService {
     private readonly paymentsService: PaymentsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly schedulesService: SchedulesService,
+    @Inject(GUEST_ADDRESS_LOOKUP)
+    private readonly guestAddressLookup: GuestAddressLookup,
   ) {}
 
   async create(
@@ -102,7 +108,13 @@ export class PreOrdersService {
       }
     }
 
-    const deliveryAddress = this.normalizeDeliveryAddress(dto);
+    const now = new Date();
+    const deliveryAddress = await this.resolveDeliveryAddress(
+      restaurantId,
+      userId,
+      dto,
+      now,
+    );
     if (dto.fulfillmentType === FulfillmentType.DELIVERY && !deliveryAddress) {
       throwOrderBusinessError('ADDRESS_REQUIRED', 'Укажите адрес доставки');
     }
@@ -172,7 +184,6 @@ export class PreOrdersService {
         ? OrderPaymentStatus.PENDING
         : OrderPaymentStatus.NOT_REQUIRED;
 
-    const now = new Date();
     const order = await this.saveOrderWithRetry({
       restaurantId,
       userId,
@@ -202,6 +213,21 @@ export class PreOrdersService {
         customerPhone,
       });
       paymentRedirectUrl = payment.redirectUrl;
+    }
+
+    if (
+      dto.fulfillmentType === FulfillmentType.DELIVERY &&
+      dto.saveAddress === true &&
+      !dto.addressId &&
+      deliveryAddress
+    ) {
+      await this.guestAddressLookup.touchOrSave({
+        userId,
+        restaurantId,
+        snapshot: deliveryAddress,
+        label: dto.addressLabel,
+        now,
+      });
     }
 
     this.eventEmitter.emit(
@@ -295,12 +321,35 @@ export class PreOrdersService {
     }
   }
 
-  private normalizeDeliveryAddress(
+  private async resolveDeliveryAddress(
+    restaurantId: string,
+    userId: string,
     dto: CreatePreOrderDto,
-  ): DeliveryAddressDto | null {
+    now: Date,
+  ): Promise<DeliveryAddressDto | null> {
     if (dto.fulfillmentType !== FulfillmentType.DELIVERY) {
       return null;
     }
+
+    if (dto.addressId) {
+      const snapshot = await this.guestAddressLookup.findSnapshotForOrder(
+        userId,
+        restaurantId,
+        dto.addressId,
+        now,
+      );
+      if (!snapshot) {
+        throwOrderBusinessError('ADDRESS_NOT_FOUND', 'Адрес не найден');
+      }
+      return snapshot;
+    }
+
+    return this.normalizeDeliveryAddress(dto);
+  }
+
+  private normalizeDeliveryAddress(
+    dto: CreatePreOrderDto,
+  ): DeliveryAddressDto | null {
     if (!dto.deliveryAddress) {
       return null;
     }
