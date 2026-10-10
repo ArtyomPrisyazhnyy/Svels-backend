@@ -1,15 +1,43 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { createHmac } from 'crypto';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { UserRole } from '../src/common/enums/user-role.enum';
 import { createE2eApp } from './helpers/e2e-app';
-import {
-  insertRestaurantGuest,
-  insertStaffUser,
-  seedRestaurantBase,
-} from './helpers/restaurant-seed';
+import { insertStaffUser, seedRestaurantBase } from './helpers/restaurant-seed';
 
 const password = 'test-pass-12';
+const BOT_TOKEN = '123:TEST';
+
+function signInitData(user: object): string {
+  const fields: Record<string, string> = {
+    auth_date: String(Math.floor(Date.now() / 1000)),
+    user: JSON.stringify(user),
+  };
+  const secretKey = createHmac('sha256', 'WebAppData')
+    .update(BOT_TOKEN)
+    .digest();
+  const dataCheckString = Object.keys(fields)
+    .sort()
+    .map((key) => `${key}=${fields[key]}`)
+    .join('\n');
+  const hash = createHmac('sha256', secretKey)
+    .update(dataCheckString)
+    .digest('hex');
+  return new URLSearchParams({ ...fields, hash }).toString();
+}
+
+async function loginTelegramGuest(
+  app: NestFastifyApplication,
+  restaurantId: string,
+  telegramUser: { id: number; first_name: string; last_name?: string },
+): Promise<string> {
+  const res = await request(app.getHttpServer())
+    .post(`/restaurants/${restaurantId}/auth/telegram`)
+    .send({ initData: signInitData(telegramUser) })
+    .expect(200);
+  return (res.body as { accessToken: string }).accessToken;
+}
 
 interface GuestAddressBody {
   id: string;
@@ -29,8 +57,12 @@ describe('Guest addresses (e2e)', () => {
   let guest2Token: string;
   let hallToken: string;
   let addressId: string;
+  let previousBotToken: string | undefined;
 
   beforeAll(async () => {
+    previousBotToken = process.env.TELEGRAM_BOT_TOKEN;
+    process.env.TELEGRAM_BOT_TOKEN = BOT_TOKEN;
+
     app = await createE2eApp();
     const dataSource = app.get(DataSource);
     const seeded = await seedRestaurantBase(dataSource, `addr-${runId}`, {
@@ -39,18 +71,6 @@ describe('Guest addresses (e2e)', () => {
     restaurantId = seeded.restaurantId;
     menuItemId = seeded.menuItemId;
 
-    const guest = await insertRestaurantGuest(
-      dataSource,
-      runId,
-      restaurantId,
-      'one',
-    );
-    const guest2 = await insertRestaurantGuest(
-      dataSource,
-      runId,
-      restaurantId,
-      'two',
-    );
     const hall = await insertStaffUser(
       dataSource,
       runId,
@@ -59,17 +79,16 @@ describe('Guest addresses (e2e)', () => {
       'hall',
     );
 
-    const guestLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: guest.email, password })
-      .expect(201);
-    guestToken = (guestLogin.body as { accessToken: string }).accessToken;
-
-    const guest2Login = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: guest2.email, password })
-      .expect(201);
-    guest2Token = (guest2Login.body as { accessToken: string }).accessToken;
+    guestToken = await loginTelegramGuest(app, restaurantId, {
+      id: 900_000_001,
+      first_name: 'Addr',
+      last_name: 'One',
+    });
+    guest2Token = await loginTelegramGuest(app, restaurantId, {
+      id: 900_000_002,
+      first_name: 'Addr',
+      last_name: 'Two',
+    });
 
     const hallLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -80,6 +99,11 @@ describe('Guest addresses (e2e)', () => {
 
   afterAll(async () => {
     await app?.close();
+    if (previousBotToken === undefined) {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+    } else {
+      process.env.TELEGRAM_BOT_TOKEN = previousBotToken;
+    }
   });
 
   const basePath = () => `/restaurants/${restaurantId}/me/addresses`;
