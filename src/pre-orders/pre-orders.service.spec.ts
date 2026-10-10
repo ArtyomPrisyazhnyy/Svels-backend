@@ -31,8 +31,9 @@ describe('PreOrdersService.create validations', () => {
   const guestAddressLookup = {
     findSnapshotForOrder: jest.fn<
       Promise<{ street: string; house: string } | null>,
-      [string, string, string, Date?]
+      [string, string, string]
     >(),
+    touchLastUsedAt: jest.fn<Promise<void>, [string, string, string, Date]>(),
     touchOrSave: jest.fn<
       Promise<void>,
       [
@@ -281,6 +282,7 @@ describe('PreOrdersService.create validations', () => {
     });
 
     expect(guestAddressLookup.findSnapshotForOrder).toHaveBeenCalled();
+    expect(guestAddressLookup.touchLastUsedAt).toHaveBeenCalled();
     expect(guestAddressLookup.touchOrSave).not.toHaveBeenCalled();
   });
 
@@ -424,7 +426,63 @@ describe('PreOrdersService.create validations', () => {
     });
 
     expect(guestAddressLookup.findSnapshotForOrder).not.toHaveBeenCalled();
+    expect(guestAddressLookup.touchLastUsedAt).not.toHaveBeenCalled();
     expect(guestAddressLookup.touchOrSave).not.toHaveBeenCalled();
+  });
+
+  it('does not fail order when touchOrSave throws', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue({
+      ordersPaused: false,
+      fulfillmentDelivery: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: true,
+      deliveryForSomeoneElse: false,
+    });
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+    dataSource.transaction.mockImplementation(
+      <T>(fn: (manager: unknown) => Promise<T>) =>
+        fn({
+          query: jest.fn().mockResolvedValue([{ next: 1 }]),
+          create: jest.fn(
+            (_entity: unknown, data: Record<string, unknown>) => data,
+          ),
+          save: jest.fn((entity: Record<string, unknown>) =>
+            Promise.resolve({
+              ...entity,
+              id: '019efb61-5d8e-7058-b838-6f2696cb4999',
+              orderNumber: 1,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }),
+          ),
+        }),
+    );
+    preOrderItemRepository.find.mockResolvedValue([]);
+    guestAddressLookup.touchOrSave.mockRejectedValue(new Error('db'));
+
+    await expect(
+      service.create(restaurantId, 'user', {
+        ...baseDto,
+        saveAddress: true,
+      }),
+    ).resolves.toBeDefined();
   });
 
   it('rejects disabled payment method', async () => {

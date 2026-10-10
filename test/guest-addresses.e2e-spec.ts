@@ -56,6 +56,7 @@ describe('Guest addresses (e2e)', () => {
   let guestToken: string;
   let guest2Token: string;
   let hallToken: string;
+  let otherRestaurantGuestToken: string;
   let addressId: string;
   let previousBotToken: string | undefined;
 
@@ -89,6 +90,17 @@ describe('Guest addresses (e2e)', () => {
       first_name: 'Addr',
       last_name: 'Two',
     });
+
+    const otherRestaurant = await seedRestaurantBase(
+      dataSource,
+      `addr-other-${runId}`,
+      { restaurantName: 'Other Addr Cafe' },
+    );
+    otherRestaurantGuestToken = await loginTelegramGuest(
+      app,
+      otherRestaurant.restaurantId,
+      { id: 900_000_003, first_name: 'Other', last_name: 'Venue' },
+    );
 
     const hallLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -141,7 +153,7 @@ describe('Guest addresses (e2e)', () => {
     await request(app.getHttpServer())
       .post(`${basePath()}/${secondId}/default`)
       .set('Authorization', `Bearer ${guestToken}`)
-      .expect(201);
+      .expect(200);
 
     const listAfterDefault = await request(app.getHttpServer())
       .get(basePath())
@@ -161,6 +173,48 @@ describe('Guest addresses (e2e)', () => {
       .delete(`${basePath()}/${addressId}`)
       .set('Authorization', `Bearer ${guest2Token}`)
       .expect(404);
+  });
+
+  it('returns 403 for guest from another restaurant', async () => {
+    await request(app.getHttpServer())
+      .get(basePath())
+      .set('Authorization', `Bearer ${otherRestaurantGuestToken}`)
+      .expect(403);
+  });
+
+  it('reassigns default to most recently used address after delete', async () => {
+    const first = await request(app.getHttpServer())
+      .post(basePath())
+      .set('Authorization', `Bearer ${guest2Token}`)
+      .send({ street: 'Старая', house: '1' })
+      .expect(201);
+    const firstId = (first.body as GuestAddressBody).id;
+
+    const second = await request(app.getHttpServer())
+      .post(basePath())
+      .set('Authorization', `Bearer ${guest2Token}`)
+      .send({ street: 'Новая', house: '2' })
+      .expect(201);
+    const secondId = (second.body as GuestAddressBody).id;
+
+    await request(app.getHttpServer())
+      .post(`${basePath()}/${secondId}/default`)
+      .set('Authorization', `Bearer ${guest2Token}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .delete(`${basePath()}/${secondId}`)
+      .set('Authorization', `Bearer ${guest2Token}`)
+      .expect(204);
+
+    const listRes = await request(app.getHttpServer())
+      .get(basePath())
+      .set('Authorization', `Bearer ${guest2Token}`)
+      .expect(200);
+    const list = listRes.body as GuestAddressBody[];
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe(firstId);
+    expect(list[0].isDefault).toBe(true);
   });
 
   it('returns 403 for staff role', async () => {

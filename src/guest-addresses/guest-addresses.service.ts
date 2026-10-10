@@ -13,11 +13,18 @@ import {
   normalizeOptionalAddressField,
   normalizeRequiredAddressField,
   snapshotFromEntity,
+  trimOptionalSnapshotField,
+  trimRequiredSnapshotField,
 } from './utils/guest-address-normalize.util';
 import {
   throwAddressLimit,
   throwAddressNotFound,
+  throwGuestAddressValidation,
 } from './utils/guest-address-error.util';
+import {
+  isWithinGuestAddressFieldLimits,
+  type NormalizedGuestAddressFields,
+} from './utils/guest-address-limits.util';
 
 const MAX_ADDRESSES_PER_GUEST = 10;
 
@@ -65,6 +72,7 @@ export class GuestAddressesService {
     dto: CreateGuestAddressDto,
   ): Promise<CreateGuestAddressResult> {
     const normalized = this.normalizeInput(dto);
+    this.assertWithinFieldLimits(normalized);
 
     const duplicate = await this.findDuplicate(
       restaurantId,
@@ -153,6 +161,17 @@ export class GuestAddressesService {
     if (dto.comment !== undefined) {
       address.comment = normalizeOptionalAddressField(dto.comment);
     }
+
+    this.assertWithinFieldLimits({
+      label: address.label,
+      street: address.street,
+      house: address.house,
+      apartment: address.apartment,
+      entrance: address.entrance,
+      floor: address.floor,
+      intercom: address.intercom,
+      comment: address.comment,
+    });
 
     const saved = await this.dataSource.transaction(async (manager) => {
       if (dto.isDefault === true) {
@@ -246,7 +265,6 @@ export class GuestAddressesService {
     userId: string,
     restaurantId: string,
     addressId: string,
-    now: Date,
   ): Promise<DeliveryAddressDto | null> {
     const address = await this.findOwnedAddress(
       restaurantId,
@@ -257,10 +275,25 @@ export class GuestAddressesService {
       return null;
     }
 
+    return snapshotFromEntity(address);
+  }
+
+  async touchLastUsedAt(
+    userId: string,
+    restaurantId: string,
+    addressId: string,
+    now: Date,
+  ): Promise<void> {
+    const address = await this.findOwnedAddress(
+      restaurantId,
+      userId,
+      addressId,
+    );
+    if (!address) {
+      return;
+    }
     address.lastUsedAt = now;
     await this.guestAddressRepository.save(address);
-
-    return snapshotFromEntity(address);
   }
 
   async touchOrSave(params: {
@@ -271,6 +304,9 @@ export class GuestAddressesService {
     now: Date;
   }): Promise<void> {
     const normalized = this.normalizeSnapshot(params.snapshot, params.label);
+    if (!isWithinGuestAddressFieldLimits(normalized)) {
+      return;
+    }
 
     const duplicate = await this.findDuplicate(
       params.restaurantId,
@@ -393,26 +429,23 @@ export class GuestAddressesService {
   private normalizeSnapshot(
     snapshot: DeliveryAddressDto,
     label?: string,
-  ): {
-    label: string | null;
-    street: string;
-    house: string;
-    apartment: string | null;
-    entrance: string | null;
-    floor: string | null;
-    intercom: string | null;
-    comment: string | null;
-  } {
+  ): NormalizedGuestAddressFields {
     return {
-      label: normalizeOptionalAddressField(label),
-      street: normalizeRequiredAddressField(snapshot.street),
-      house: normalizeRequiredAddressField(snapshot.house),
-      apartment: normalizeOptionalAddressField(snapshot.apartment),
-      entrance: normalizeOptionalAddressField(snapshot.entrance),
-      floor: normalizeOptionalAddressField(snapshot.floor),
-      intercom: normalizeOptionalAddressField(snapshot.intercom),
-      comment: normalizeOptionalAddressField(snapshot.comment),
+      label: trimOptionalSnapshotField(label),
+      street: trimRequiredSnapshotField(snapshot.street),
+      house: trimRequiredSnapshotField(snapshot.house),
+      apartment: trimOptionalSnapshotField(snapshot.apartment),
+      entrance: trimOptionalSnapshotField(snapshot.entrance),
+      floor: trimOptionalSnapshotField(snapshot.floor),
+      intercom: trimOptionalSnapshotField(snapshot.intercom),
+      comment: trimOptionalSnapshotField(snapshot.comment),
     };
+  }
+
+  private assertWithinFieldLimits(fields: NormalizedGuestAddressFields): void {
+    if (!isWithinGuestAddressFieldLimits(fields)) {
+      throwGuestAddressValidation();
+    }
   }
 
   private toDto(address: GuestAddress): GuestAddressDto {

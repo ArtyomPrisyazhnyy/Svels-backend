@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -53,6 +53,8 @@ const MY_ORDERS_LIMIT = 50;
 
 @Injectable()
 export class PreOrdersService {
+  private readonly logger = new Logger(PreOrdersService.name);
+
   constructor(
     @InjectRepository(PreOrder)
     private readonly preOrderRepository: Repository<PreOrder>,
@@ -113,7 +115,6 @@ export class PreOrdersService {
       restaurantId,
       userId,
       dto,
-      now,
     );
     if (dto.fulfillmentType === FulfillmentType.DELIVERY && !deliveryAddress) {
       throwOrderBusinessError('ADDRESS_REQUIRED', 'Укажите адрес доставки');
@@ -215,25 +216,37 @@ export class PreOrdersService {
       paymentRedirectUrl = payment.redirectUrl;
     }
 
-    if (
-      dto.fulfillmentType === FulfillmentType.DELIVERY &&
-      dto.saveAddress === true &&
-      !dto.addressId &&
-      deliveryAddress
-    ) {
-      await this.guestAddressLookup.touchOrSave({
-        userId,
-        restaurantId,
-        snapshot: deliveryAddress,
-        label: dto.addressLabel,
-        now,
-      });
-    }
-
     this.eventEmitter.emit(
       ORDER_CREATED_EVENT,
       new OrderCreatedEvent(order.id, restaurantId, order.orderNumber),
     );
+
+    if (dto.fulfillmentType === FulfillmentType.DELIVERY) {
+      try {
+        if (dto.addressId) {
+          await this.guestAddressLookup.touchLastUsedAt(
+            userId,
+            restaurantId,
+            dto.addressId,
+            now,
+          );
+        } else if (dto.saveAddress === true && deliveryAddress) {
+          await this.guestAddressLookup.touchOrSave({
+            userId,
+            restaurantId,
+            snapshot: deliveryAddress,
+            label: dto.addressLabel,
+            now,
+          });
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'unknown error';
+        this.logger.warn(
+          `Не удалось обновить сохранённый адрес гостя (orderId=${order.id}): ${message}`,
+        );
+      }
+    }
 
     const items = await this.preOrderItemRepository.find({
       where: { preOrderId: order.id },
@@ -325,7 +338,6 @@ export class PreOrdersService {
     restaurantId: string,
     userId: string,
     dto: CreatePreOrderDto,
-    now: Date,
   ): Promise<DeliveryAddressDto | null> {
     if (dto.fulfillmentType !== FulfillmentType.DELIVERY) {
       return null;
@@ -336,7 +348,6 @@ export class PreOrdersService {
         userId,
         restaurantId,
         dto.addressId,
-        now,
       );
       if (!snapshot) {
         throwOrderBusinessError('ADDRESS_NOT_FOUND', 'Адрес не найден');

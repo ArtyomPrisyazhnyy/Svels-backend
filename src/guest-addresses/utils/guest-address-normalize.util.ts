@@ -18,6 +18,21 @@ export function normalizeRequiredAddressField(value: string): string {
   return sanitizeText(value.trim());
 }
 
+/** Pre-sanitized order snapshot: trim only (no second sanitizeText pass). */
+export function trimOptionalSnapshotField(
+  value?: string | null,
+): string | null {
+  if (value == null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function trimRequiredSnapshotField(value: string): string {
+  return value.trim();
+}
+
 export function addressDedupeKey(
   street: string,
   house: string,

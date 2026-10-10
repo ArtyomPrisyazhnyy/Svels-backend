@@ -37,6 +37,18 @@ export function throwAddressNotFound(): never {
   });
 }
 
+export function throwGuestAddressValidation(message?: string): never {
+  throw new HttpException(
+    {
+      statusCode: HttpStatus.BAD_REQUEST,
+      message: message ?? 'Некорректные данные адреса',
+      error: 'Bad Request',
+      code: 'VALIDATION',
+    },
+    HttpStatus.BAD_REQUEST,
+  );
+}
+
 export function throwAddressLimit(): never {
   throw new HttpException(
     {

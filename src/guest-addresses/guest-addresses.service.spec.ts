@@ -162,10 +162,55 @@ describe('GuestAddressesService', () => {
       otherUserId,
       restaurantId,
       '019efb61-5d8e-7058-b838-6f2696cb4300',
-      new Date(),
     );
 
     expect(snapshot).toBeNull();
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('touchOrSave keeps quotes and ampersands in pre-sanitized snapshot', async () => {
+    repository.find.mockResolvedValue([]);
+    repository.count.mockResolvedValue(0);
+    const savedEntity = jest.fn();
+    manager.save.mockImplementation((entity: GuestAddress) => {
+      savedEntity(entity);
+      return Promise.resolve({
+        ...entity,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T10:00:00.000Z'),
+      });
+    });
+
+    await service.touchOrSave({
+      userId,
+      restaurantId,
+      snapshot: {
+        street: 'ул. "Центр"',
+        house: '1&2',
+        comment: 'a & b',
+      },
+      now: new Date(),
+    });
+
+    expect(savedEntity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        street: 'ул. "Центр"',
+        house: '1&2',
+        comment: 'a & b',
+      }),
+    );
+  });
+
+  it('throws VALIDATION when field exceeds DB length after sanitize', async () => {
+    repository.find.mockResolvedValue([]);
+    repository.count.mockResolvedValue(0);
+
+    await expect(
+      service.create(restaurantId, userId, {
+        street: 'x'.repeat(121),
+        house: '1',
+      }),
+    ).rejects.toMatchObject({ response: { code: 'VALIDATION' } });
   });
 
   it('touchOrSave skips when limit reached', async () => {

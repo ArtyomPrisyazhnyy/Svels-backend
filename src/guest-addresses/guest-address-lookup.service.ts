@@ -11,9 +11,21 @@ export class GuestAddressLookupService implements GuestAddressLookup {
     userId: string,
     restaurantId: string,
     addressId: string,
-    now: Date = new Date(),
   ): Promise<DeliveryAddressDto | null> {
     return this.guestAddressesService.findSnapshotForOrder(
+      userId,
+      restaurantId,
+      addressId,
+    );
+  }
+
+  touchLastUsedAt(
+    userId: string,
+    restaurantId: string,
+    addressId: string,
+    now: Date,
+  ): Promise<void> {
+    return this.guestAddressesService.touchLastUsedAt(
       userId,
       restaurantId,
       addressId,

@@ -5,8 +5,14 @@ export interface GuestAddressLookup {
     userId: string,
     restaurantId: string,
     addressId: string,
-    now?: Date,
   ): Promise<DeliveryAddressDto | null>;
+
+  touchLastUsedAt(
+    userId: string,
+    restaurantId: string,
+    addressId: string,
+    now: Date,
+  ): Promise<void>;
 
   touchOrSave(params: {
     userId: string;

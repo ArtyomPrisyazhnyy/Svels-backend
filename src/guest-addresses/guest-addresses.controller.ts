@@ -56,6 +56,7 @@ export class GuestAddressesController {
   }
 
   @Post(':id/default')
+  @HttpCode(HttpStatus.OK)
   setDefault(
     @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
     @Param('id', ParseUuidV7Pipe) id: string,

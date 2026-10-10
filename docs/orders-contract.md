@@ -56,6 +56,7 @@ interface CreatePreOrderPayload {
 }
 ```
 - **Убираются из запроса:** `unitPrice` и `name` у позиций. Цена и название считаются только на сервере (W1-B-ORD). W0-B2 оставляет их в DTO как `@IsOptional` и **игнорирует**, чтобы старые клиенты не ломались.
+- Ошибки: `400 VALIDATION` (стандартная валидация), `400 FULFILLMENT_DISABLED`, `400 PAYMENT_METHOD_DISABLED`, `400 ADDRESS_REQUIRED`, `400 LOCATION_REQUIRED`, `400 ITEM_UNAVAILABLE`, `400 INVALID_MODIFIERS`, `400 INVALID_REQUESTED_AT`, `409 ORDERS_PAUSED`, `409 ORDER_NUMBER_CONFLICT` (исчерпаны повторы при коллизии `orderNumber`), `409 RESTAURANT_CLOSED` (W1-B-ORD: проверка по `schedules`; при заданном `requestedAt` проверяется это время).
 
 ### 3.x Сохранённые адреса (B-ADDR)
 
@@ -63,8 +64,6 @@ interface CreatePreOrderPayload {
 - При `delivery` и `addressId` поле `deliveryAddress` в запросе опционально; в заказ попадает **снимок** сохранённого адреса (последующие правки списка заказ не меняют).
 - `saveAddress: true` без `addressId` — после успешного заказа адрес добавляется в список (дедуп, лимит 10, переполнение не отменяет заказ).
 - Ошибки: `400 ADDRESS_NOT_FOUND` (неверный `addressId`), `404 ADDRESS_NOT_FOUND` (CRUD чужого адреса), `409 ADDRESS_LIMIT` (только при явном сохранении через `/me/addresses`).
-
-- Ошибки: `400 VALIDATION` (стандартная валидация), `400 FULFILLMENT_DISABLED`, `400 PAYMENT_METHOD_DISABLED`, `400 ADDRESS_REQUIRED`, `400 LOCATION_REQUIRED`, `400 ITEM_UNAVAILABLE`, `400 INVALID_MODIFIERS`, `400 INVALID_REQUESTED_AT`, `409 ORDERS_PAUSED`, `409 ORDER_NUMBER_CONFLICT` (исчерпаны повторы при коллизии `orderNumber`), `409 RESTAURANT_CLOSED` (W1-B-ORD: проверка по `schedules`; при заданном `requestedAt` проверяется это время).
 
 Ответ (и для `GET /users/me/pre-orders`, `GET /users/me/pre-orders/:id`):
 ```ts
