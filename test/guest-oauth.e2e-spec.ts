@@ -86,6 +86,28 @@ describe('Guest OAuth (e2e)', () => {
     return jwtService.sign(claims);
   }
 
+  it('rejects unknown body fields on OAuth endpoints (ValidationPipe whitelist)', async () => {
+    const idToken = signGoogleToken({
+      sub: `google-${runId}-validation`,
+      email: `validation-${runId}@example.com`,
+    });
+
+    await request(app.getHttpServer())
+      .post(`/restaurants/${restaurantId}/auth/oauth/google`)
+      .send({ idToken, extraField: 'x' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post(`/restaurants/${restaurantId}/auth/oauth/apple`)
+      .send({
+        idToken,
+        firstName: 'A',
+        lastName: 'B',
+        unknown: true,
+      })
+      .expect(400);
+  });
+
   it('returns configured OAuth providers', async () => {
     const res = await request(app.getHttpServer())
       .get(`/restaurants/${restaurantId}/auth/oauth/providers`)
