@@ -32,10 +32,7 @@ describe('GuestAppleIdTokenVerifier', () => {
 
   beforeEach(() => {
     jwtVerify.mockReset();
-    verifier = new GuestAppleIdTokenVerifier(
-      configService,
-      () => mockJwks,
-    );
+    verifier = new GuestAppleIdTokenVerifier(configService, () => mockJwks);
   });
 
   it('rejects when Apple OAuth is not configured', async () => {
