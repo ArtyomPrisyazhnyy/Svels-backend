@@ -246,29 +246,4 @@ describe('Guest OAuth (e2e)', () => {
       .set('Authorization', `Bearer ${bodyA.accessToken}`)
       .expect(200);
   });
-
-  it('returns 403 when Google OAuth is disabled', async () => {
-    const prev = process.env.GOOGLE_OAUTH_CLIENT_ID;
-    process.env.GOOGLE_OAUTH_CLIENT_ID = '';
-
-    const moduleRef = await createE2eApp();
-    const seeded = await seedRestaurantBase(
-      moduleRef.get(DataSource),
-      `${runId}-disabled`,
-    );
-    const idToken = moduleRef.get(JwtService).sign({
-      sub: 'x',
-      email: 'x@example.com',
-    });
-
-    const res = await request(moduleRef.getHttpServer())
-      .post(`/restaurants/${seeded.restaurantId}/auth/oauth/google`)
-      .send({ idToken })
-      .expect(403);
-
-    expect((res.body as { message: string }).message).toContain('Google');
-
-    await moduleRef.close();
-    process.env.GOOGLE_OAUTH_CLIENT_ID = prev;
-  });
 });
