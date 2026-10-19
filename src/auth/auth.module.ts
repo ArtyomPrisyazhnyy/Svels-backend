@@ -31,6 +31,6 @@ import { PasswordSetService } from './password-set.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, GoogleTokenService, JwtStrategy, PasswordSetService],
-  exports: [AuthService, PasswordSetService],
+  exports: [AuthService, PasswordSetService, JwtModule],
 })
 export class AuthModule {}

@@ -76,5 +76,5 @@ export async function closeE2eApp(
   } catch {
     // DataSource may be unavailable if the module failed to boot.
   }
-  await app.close();
+  await app?.close();
 }
