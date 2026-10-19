@@ -12,7 +12,7 @@
       "transform": {
         "^.+\\.(t|j)s$": "ts-jest"
       },
-      "transformIgnorePatterns": ["node_modules/(?!uuid/)"]
+      "transformIgnorePatterns": ["node_modules/(?!uuid|jose/)"]
     },
     {
       "displayName": "e2e-dev",
@@ -25,7 +25,7 @@
       "transform": {
         "^.+\\.(t|j)s$": "ts-jest"
       },
-      "transformIgnorePatterns": ["node_modules/(?!uuid/)"]
+      "transformIgnorePatterns": ["node_modules/(?!uuid|jose/)"]
     }
   ]
 }

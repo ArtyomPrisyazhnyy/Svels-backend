@@ -19,7 +19,9 @@ export class W4BGuestOAuth1792000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "public"."IDX_guest_oauth_identities_user"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_guest_oauth_identities_user"`,
+    );
     await queryRunner.query(
       `DROP INDEX "public"."IDX_guest_oauth_identities_restaurant_provider_subject"`,
     );
