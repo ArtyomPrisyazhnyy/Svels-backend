@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -22,8 +23,7 @@ import {
   GuestOAuthAuthResponseDto,
   GuestOAuthProvidersResponseDto,
 } from './dto/guest-oauth-auth-response.dto';
-import { GuestGoogleIdTokenVerifier } from './guest-google-id-token.verifier';
-import { GuestAppleIdTokenVerifier } from './guest-apple-id-token.verifier';
+import { buildGuestOAuthProvidersResponse } from './guest-oauth-providers.util';
 
 @Injectable()
 export class GuestOAuthService {
@@ -31,6 +31,7 @@ export class GuestOAuthService {
     @Inject(USERS_SERVICE)
     private readonly usersService: IUsersService,
     private readonly authService: AuthService,
+    private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
     @InjectRepository(GuestOAuthIdentity)
     private readonly identityRepository: Repository<GuestOAuthIdentity>,
@@ -38,22 +39,10 @@ export class GuestOAuthService {
     private readonly googleVerifier: IGuestGoogleIdTokenVerifier,
     @Inject(GUEST_APPLE_ID_TOKEN_VERIFIER)
     private readonly appleVerifier: IGuestAppleIdTokenVerifier,
-    private readonly googleVerifierMeta: GuestGoogleIdTokenVerifier,
-    private readonly appleVerifierMeta: GuestAppleIdTokenVerifier,
   ) {}
 
   getProviders(): GuestOAuthProvidersResponseDto {
-    return {
-      google: {
-        enabled: this.googleVerifierMeta.isEnabled(),
-        clientId: this.googleVerifierMeta.getPrimaryClientId(),
-      },
-      apple: {
-        enabled: this.appleVerifierMeta.isEnabled(),
-        serviceId: this.appleVerifierMeta.getServiceIdForClient(),
-        redirectUri: this.appleVerifierMeta.getRedirectUriForClient(),
-      },
-    };
+    return buildGuestOAuthProvidersResponse(this.configService);
   }
 
   async signInWithGoogle(

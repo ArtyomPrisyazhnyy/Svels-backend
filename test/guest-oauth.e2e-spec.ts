@@ -3,15 +3,7 @@ import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
-import {
-  GUEST_APPLE_ID_TOKEN_VERIFIER,
-  GUEST_GOOGLE_ID_TOKEN_VERIFIER,
-} from '../src/common/constants/injection-tokens';
-import { createE2eApp } from './helpers/e2e-app';
-import {
-  E2eGuestAppleIdTokenVerifier,
-  E2eGuestGoogleIdTokenVerifier,
-} from './helpers/guest-oauth-test-verifiers';
+import { closeE2eApp, createE2eApp } from './helpers/e2e-app';
 import { seedRestaurantBase } from './helpers/restaurant-seed';
 
 interface GuestOAuthAuthBody {
@@ -46,16 +38,7 @@ describe('Guest OAuth (e2e)', () => {
     process.env.APPLE_TEAM_ID = googleEnv.APPLE_TEAM_ID;
     process.env.APPLE_REDIRECT_URI = googleEnv.APPLE_REDIRECT_URI;
 
-    app = await createE2eApp((builder) => {
-      builder.overrideProvider(GUEST_GOOGLE_ID_TOKEN_VERIFIER).useFactory({
-        factory: (jwt: JwtService) => new E2eGuestGoogleIdTokenVerifier(jwt),
-        inject: [JwtService],
-      });
-      builder.overrideProvider(GUEST_APPLE_ID_TOKEN_VERIFIER).useFactory({
-        factory: (jwt: JwtService) => new E2eGuestAppleIdTokenVerifier(jwt),
-        inject: [JwtService],
-      });
-    });
+    app = await createE2eApp();
 
     jwtService = app.get(JwtService);
     const dataSource = app.get(DataSource);
@@ -70,7 +53,7 @@ describe('Guest OAuth (e2e)', () => {
   }, 120_000);
 
   afterAll(async () => {
-    await app?.close();
+    await closeE2eApp(app);
   });
 
   function signGoogleToken(claims: {

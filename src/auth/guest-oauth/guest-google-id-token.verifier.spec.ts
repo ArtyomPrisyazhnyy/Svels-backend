@@ -6,12 +6,13 @@ import { GuestGoogleIdTokenVerifier } from './guest-google-id-token.verifier';
 describe('GuestGoogleIdTokenVerifier', () => {
   let verifier: GuestGoogleIdTokenVerifier;
   let verifyIdToken: jest.Mock;
+  let client: OAuth2Client;
 
   beforeEach(() => {
     verifyIdToken = jest.fn();
-    jest
-      .spyOn(OAuth2Client.prototype, 'verifyIdToken')
-      .mockImplementation(verifyIdToken);
+    client = {
+      verifyIdToken: verifyIdToken,
+    } as unknown as OAuth2Client;
 
     const configService = {
       get: jest.fn((key: string) => {
@@ -22,18 +23,14 @@ describe('GuestGoogleIdTokenVerifier', () => {
       }),
     } as unknown as ConfigService;
 
-    verifier = new GuestGoogleIdTokenVerifier(configService);
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
+    verifier = new GuestGoogleIdTokenVerifier(configService, client);
   });
 
   it('rejects when Google OAuth is not configured', async () => {
     const configService = {
       get: jest.fn(() => []),
     } as unknown as ConfigService;
-    const disabled = new GuestGoogleIdTokenVerifier(configService);
+    const disabled = new GuestGoogleIdTokenVerifier(configService, client);
 
     await expect(disabled.verify('token')).rejects.toBeInstanceOf(
       ForbiddenException,

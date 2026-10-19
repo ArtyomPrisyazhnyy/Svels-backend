@@ -8,10 +8,12 @@ jest.mock('jose', () => ({
   createRemoteJWKSet: jest.fn(),
 }));
 
+import type { JWTVerifyGetKey } from 'jose';
 import { GuestAppleIdTokenVerifier } from './guest-apple-id-token.verifier';
 
 describe('GuestAppleIdTokenVerifier', () => {
   let verifier: GuestAppleIdTokenVerifier;
+  const mockJwks: JWTVerifyGetKey = jest.fn();
 
   const configService = {
     get: jest.fn((key: string) => {
@@ -30,14 +32,20 @@ describe('GuestAppleIdTokenVerifier', () => {
 
   beforeEach(() => {
     jwtVerify.mockReset();
-    verifier = new GuestAppleIdTokenVerifier(configService);
+    verifier = new GuestAppleIdTokenVerifier(
+      configService,
+      () => mockJwks,
+    );
   });
 
   it('rejects when Apple OAuth is not configured', async () => {
     const disabledConfig = {
       get: jest.fn(() => ''),
     } as unknown as ConfigService;
-    const disabled = new GuestAppleIdTokenVerifier(disabledConfig);
+    const disabled = new GuestAppleIdTokenVerifier(
+      disabledConfig,
+      () => mockJwks,
+    );
 
     await expect(disabled.verify('token')).rejects.toBeInstanceOf(
       ForbiddenException,
@@ -83,6 +91,11 @@ describe('GuestAppleIdTokenVerifier', () => {
       email: 'hide@privaterelay.appleid.com',
       firstName: 'User',
       lastName: '',
+    });
+
+    expect(jwtVerify).toHaveBeenCalledWith('token', mockJwks, {
+      issuer: 'https://appleid.apple.com',
+      audience: 'com.example.service',
     });
   });
 });

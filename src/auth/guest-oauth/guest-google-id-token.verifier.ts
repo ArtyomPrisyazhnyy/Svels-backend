@@ -1,32 +1,33 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
+import { GUEST_GOOGLE_OAUTH2_CLIENT } from '../../common/constants/injection-tokens';
 import type { IGuestGoogleIdTokenVerifier } from './interfaces/guest-id-token-verifier.interface';
 import type { VerifiedGuestOAuthProfile } from './interfaces/verified-guest-oauth-profile.interface';
 
 @Injectable()
 export class GuestGoogleIdTokenVerifier implements IGuestGoogleIdTokenVerifier {
   private readonly logger = new Logger(GuestGoogleIdTokenVerifier.name);
-  private readonly client = new OAuth2Client();
+  private readonly client: OAuth2Client;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional()
+    @Inject(GUEST_GOOGLE_OAUTH2_CLIENT)
+    client?: OAuth2Client,
+  ) {
+    this.client = client ?? new OAuth2Client();
+  }
 
   private getAudiences(): string[] {
     return this.configService.get<string[]>('guestOAuth.googleClientIds') ?? [];
-  }
-
-  isEnabled(): boolean {
-    return this.getAudiences().length > 0;
-  }
-
-  getPrimaryClientId(): string | null {
-    const audiences = this.getAudiences();
-    return audiences[0] ?? null;
   }
 
   async verify(idToken: string): Promise<VerifiedGuestOAuthProfile> {

@@ -1,29 +1,37 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
+import { jwtVerify } from 'jose';
+import { GUEST_APPLE_JWKS_RESOLVER } from '../../common/constants/injection-tokens';
+import type { GuestAppleJwksResolverFn } from './apple-jwks.resolver';
 import type { IGuestAppleIdTokenVerifier } from './interfaces/guest-id-token-verifier.interface';
 import type { VerifiedGuestOAuthProfile } from './interfaces/verified-guest-oauth-profile.interface';
 
-const APPLE_JWKS_URL = new URL('https://appleid.apple.com/auth/keys');
 const APPLE_ISSUER = 'https://appleid.apple.com';
 
 @Injectable()
 export class GuestAppleIdTokenVerifier implements IGuestAppleIdTokenVerifier {
   private readonly logger = new Logger(GuestAppleIdTokenVerifier.name);
-  private jwks: JWTVerifyGetKey | null = null;
+  private jwksResolverFn: GuestAppleJwksResolverFn;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(GUEST_APPLE_JWKS_RESOLVER)
+    jwksResolverFn: GuestAppleJwksResolverFn,
+  ) {
+    this.jwksResolverFn = jwksResolverFn;
+  }
 
   private getServiceId(): string {
     return this.configService.get<string>('guestOAuth.appleServiceId') ?? '';
   }
 
-  isEnabled(): boolean {
+  private isConfigured(): boolean {
     const serviceId = this.getServiceId();
     const teamId = this.configService.get<string>('guestOAuth.appleTeamId');
     const redirectUri = this.configService.get<string>(
@@ -32,31 +40,14 @@ export class GuestAppleIdTokenVerifier implements IGuestAppleIdTokenVerifier {
     return Boolean(serviceId && teamId && redirectUri);
   }
 
-  getServiceIdForClient(): string | null {
-    return this.getServiceId() || null;
-  }
-
-  getRedirectUriForClient(): string | null {
-    const redirectUri =
-      this.configService.get<string>('guestOAuth.appleRedirectUri') ?? '';
-    return redirectUri || null;
-  }
-
-  private getJwks(): JWTVerifyGetKey {
-    if (!this.jwks) {
-      this.jwks = createRemoteJWKSet(APPLE_JWKS_URL);
-    }
-    return this.jwks;
-  }
-
   async verify(idToken: string): Promise<VerifiedGuestOAuthProfile> {
     const audience = this.getServiceId();
-    if (!this.isEnabled() || !audience) {
+    if (!this.isConfigured() || !audience) {
       throw new ForbiddenException('Apple OAuth не настроен');
     }
 
     try {
-      const { payload } = await jwtVerify(idToken, this.getJwks(), {
+      const { payload } = await jwtVerify(idToken, this.jwksResolverFn(), {
         issuer: APPLE_ISSUER,
         audience,
       });
