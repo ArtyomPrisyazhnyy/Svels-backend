@@ -28,6 +28,10 @@ describe('PreOrdersService.create validations', () => {
   const schedulesService = {
     getByRestaurant: jest.fn().mockResolvedValue([]),
   };
+  const usersService = {
+    findById: jest.fn().mockResolvedValue({ phone: '375291234567' }),
+  };
+
   const guestAddressLookup = {
     findSnapshotForOrder: jest.fn<
       Promise<{ street: string; house: string } | null>,
@@ -59,6 +63,7 @@ describe('PreOrdersService.create validations', () => {
     eventEmitter,
     schedulesService as never,
     guestAddressLookup,
+    usersService as never,
   );
 
   const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';

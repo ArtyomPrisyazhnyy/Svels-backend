@@ -7,6 +7,7 @@ import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard'
 import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantLocation } from './entities/restaurant-location.entity';
 import { RestaurantRegistrationRequest } from './entities/restaurant-registration-request.entity';
+import { GuestOAuthModule } from '../auth/guest-oauth/guest-oauth.module';
 import { RestaurantGuestAuthController } from './restaurant-guest-auth.controller';
 import { RestaurantLocationsController } from './restaurant-locations.controller';
 import { RestaurantLocationsService } from './restaurant-locations.service';
@@ -22,6 +23,7 @@ import { RestaurantsService } from './restaurants.service';
     ]),
     AuthModule,
     UsersModule,
+    GuestOAuthModule,
   ],
   controllers: [
     RestaurantsController,

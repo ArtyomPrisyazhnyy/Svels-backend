@@ -10,6 +10,7 @@ import { isDevEndpointsEnabled } from './config/is-dev-endpoints-enabled';
 import setPasswordConfig from './config/set-password.config';
 import databaseConfig from './config/database.config';
 import googleConfig from './config/google.config';
+import guestOAuthConfig from './config/guest-oauth.config';
 import jwtConfig from './config/jwt.config';
 import bepaidConfig from './config/bepaid.config';
 import nextSiteConfig from './config/next-site.config';
@@ -66,6 +67,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
         storageConfig,
         jwtConfig,
         googleConfig,
+        guestOAuthConfig,
         nextSiteConfig,
         otpConfig,
         leadsConfig,
