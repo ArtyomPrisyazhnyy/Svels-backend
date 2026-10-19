@@ -16,9 +16,21 @@ export class W4BGuestOAuth1792000000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_guest_oauth_identities_user" ON "guest_oauth_identities" ("userId")`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "guest_oauth_identities" ADD CONSTRAINT "FK_guest_oauth_identities_userId" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "guest_oauth_identities" ADD CONSTRAINT "FK_guest_oauth_identities_restaurantId" FOREIGN KEY ("restaurantId") REFERENCES "restaurants"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "guest_oauth_identities" DROP CONSTRAINT "FK_guest_oauth_identities_restaurantId"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "guest_oauth_identities" DROP CONSTRAINT "FK_guest_oauth_identities_userId"`,
+    );
     await queryRunner.query(
       `DROP INDEX "public"."IDX_guest_oauth_identities_user"`,
     );

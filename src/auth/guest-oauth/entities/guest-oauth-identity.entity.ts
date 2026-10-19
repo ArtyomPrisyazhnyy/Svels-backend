@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryColumn,
 } from 'typeorm';
 import { GuestOAuthProvider } from '../enums/guest-oauth-provider.enum';
@@ -17,8 +19,16 @@ export class GuestOAuthIdentity {
   @Column('uuid')
   userId: string;
 
+  @ManyToOne('User', { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  user?: unknown;
+
   @Column('uuid')
   restaurantId: string;
+
+  @ManyToOne('Restaurant', { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'restaurantId' })
+  restaurant?: unknown;
 
   @Column({ type: 'enum', enum: GuestOAuthProvider })
   provider: GuestOAuthProvider;
