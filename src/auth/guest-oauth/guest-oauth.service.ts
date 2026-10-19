@@ -101,7 +101,7 @@ export class GuestOAuthService {
 
     if (existingIdentity) {
       const user = await this.usersService.findById(existingIdentity.userId);
-      if (!user) {
+      if (!user || user.restaurantId !== restaurantId) {
         throw new BadRequestException('Пользователь не найден');
       }
       return this.buildOAuthAuthResponse(user, false);

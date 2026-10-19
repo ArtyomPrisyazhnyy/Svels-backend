@@ -29,6 +29,7 @@ interface GuestOAuthAuthBody {
 describe('Guest OAuth (e2e)', () => {
   let app: NestFastifyApplication;
   let restaurantId: string;
+  let otherRestaurantId: string;
   let jwtService: JwtService;
   const runId = Date.now();
 
@@ -57,10 +58,15 @@ describe('Guest OAuth (e2e)', () => {
     });
 
     jwtService = app.get(JwtService);
-    const seeded = await seedRestaurantBase(app.get(DataSource), runId, {
+    const dataSource = app.get(DataSource);
+    const seeded = await seedRestaurantBase(dataSource, runId, {
       restaurantName: 'OAuth E2E Cafe',
     });
     restaurantId = seeded.restaurantId;
+    const other = await seedRestaurantBase(dataSource, `${runId}-venue-b`, {
+      restaurantName: 'OAuth E2E Cafe B',
+    });
+    otherRestaurantId = other.restaurantId;
   }, 120_000);
 
   afterAll(async () => {
@@ -182,6 +188,41 @@ describe('Guest OAuth (e2e)', () => {
     expect(body.isNew).toBe(false);
     expect(body.needsPhone).toBe(false);
     expect(body.user.phone).toBe(phone);
+  });
+
+  it('isolates the same Google sub per venue (distinct guests; token not valid at other venue)', async () => {
+    const sub = `google-shared-sub-${runId}`;
+    const email = `shared-oauth-${runId}@example.com`;
+    const idToken = signGoogleToken({ sub, email });
+
+    const venueA = await request(app.getHttpServer())
+      .post(`/restaurants/${restaurantId}/auth/oauth/google`)
+      .send({ idToken })
+      .expect(200);
+    const venueB = await request(app.getHttpServer())
+      .post(`/restaurants/${otherRestaurantId}/auth/oauth/google`)
+      .send({ idToken })
+      .expect(200);
+
+    const bodyA = venueA.body as GuestOAuthAuthBody;
+    const bodyB = venueB.body as GuestOAuthAuthBody;
+
+    expect(bodyA.isNew).toBe(true);
+    expect(bodyB.isNew).toBe(true);
+    expect(bodyA.user.id).not.toBe(bodyB.user.id);
+    expect(bodyA.user.restaurantId).toBe(restaurantId);
+    expect(bodyB.user.restaurantId).toBe(otherRestaurantId);
+    expect(bodyA.accessToken).not.toBe(bodyB.accessToken);
+
+    await request(app.getHttpServer())
+      .get(`/restaurants/${otherRestaurantId}/me/addresses`)
+      .set('Authorization', `Bearer ${bodyA.accessToken}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get(`/restaurants/${restaurantId}/me/addresses`)
+      .set('Authorization', `Bearer ${bodyA.accessToken}`)
+      .expect(200);
   });
 
   it('returns 403 when Google OAuth is disabled', async () => {
