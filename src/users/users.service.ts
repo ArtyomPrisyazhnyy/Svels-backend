@@ -14,6 +14,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { buildGuestUserEmail } from '../common/utils/normalize-phone.util';
 import { CreateGuestUserDto } from './dto/create-guest-user.dto';
+import { CreateOAuthGuestUserDto } from './dto/create-oauth-guest-user.dto';
 import { CreateRestaurantOwnerDto } from './dto/create-restaurant-owner.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -184,6 +185,37 @@ export class UsersService implements IUsersService {
     return this.toResponse(saved);
   }
 
+  async createOAuthGuest(
+    dto: CreateOAuthGuestUserDto,
+    restaurantId: string,
+  ): Promise<UserResponseDto> {
+    const email = dto.email.toLowerCase();
+    const existing = await this.findGuestByEmailAndRestaurant(
+      email,
+      restaurantId,
+    );
+    if (existing) {
+      throw new ConflictException(
+        'Пользователь с таким email уже зарегистрирован в этом заведении',
+      );
+    }
+
+    const user = this.userRepository.create({
+      email,
+      phone: null,
+      passwordHash: null,
+      firstName: sanitizeText(dto.firstName),
+      lastName: sanitizeText(dto.lastName),
+      role: UserRole.USER,
+      restaurantId,
+      authProvider: AuthProvider.LOCAL,
+      googleId: null,
+    });
+
+    const saved = await this.userRepository.save(user);
+    return this.toResponse(saved);
+  }
+
   async createTelegramGuest(
     dto: { telegramUserId: string; firstName: string; lastName: string },
     restaurantId: string,
@@ -240,6 +272,29 @@ export class UsersService implements IUsersService {
     const user = await this.userRepository.findOne({
       where: {
         phone,
+        restaurantId,
+        role: UserRole.USER,
+      },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        role: true,
+        authProvider: true,
+        googleId: true,
+        restaurantId: true,
+      },
+    });
+    return user;
+  }
+
+  async findGuestByEmailAndRestaurant(
+    email: string,
+    restaurantId: string,
+  ): Promise<GuestAuthUserRecord | null> {
+    const user = await this.userRepository.findOne({
+      where: {
+        email: email.toLowerCase(),
         restaurantId,
         role: UserRole.USER,
       },

@@ -8,4 +8,5 @@ export const ThrottleLimits = {
   otpSend: { default: { limit: isProd ? 5 : 200, ttl: 60_000 } },
   otpVerify: { default: { limit: isProd ? 10 : 200, ttl: 60_000 } },
   otpRegister: { default: { limit: isProd ? 5 : 200, ttl: 60_000 } },
+  guestOAuth: { default: { limit: isProd ? 10 : 200, ttl: 60_000 } },
 } as const;

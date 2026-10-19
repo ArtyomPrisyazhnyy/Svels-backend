@@ -2,6 +2,7 @@ import type { EntityManager } from 'typeorm';
 import { AuthProvider } from '../../common/enums/auth-provider.enum';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { CreateGuestUserDto } from '../dto/create-guest-user.dto';
+import { CreateOAuthGuestUserDto } from '../dto/create-oauth-guest-user.dto';
 import { CreateRestaurantOwnerDto } from '../dto/create-restaurant-owner.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
@@ -38,6 +39,10 @@ export interface IUsersService {
     dto: CreateGuestUserDto,
     restaurantId: string,
   ): Promise<UserResponseDto>;
+  createOAuthGuest(
+    dto: CreateOAuthGuestUserDto,
+    restaurantId: string,
+  ): Promise<UserResponseDto>;
   createTelegramGuest(
     dto: { telegramUserId: string; firstName: string; lastName: string },
     restaurantId: string,
@@ -62,6 +67,10 @@ export interface IUsersService {
   ): Promise<PlatformAuthUserRecord | null>;
   findGuestByPhoneAndRestaurant(
     phone: string,
+    restaurantId: string,
+  ): Promise<GuestAuthUserRecord | null>;
+  findGuestByEmailAndRestaurant(
+    email: string,
     restaurantId: string,
   ): Promise<GuestAuthUserRecord | null>;
   findByGoogleId(googleId: string): Promise<UserResponseDto | null>;

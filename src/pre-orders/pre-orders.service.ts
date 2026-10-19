@@ -1,4 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { USERS_SERVICE } from '../common/constants/injection-tokens';
+import type { IUsersService } from '../users/interfaces/users-service.interface';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -71,6 +73,8 @@ export class PreOrdersService {
     private readonly schedulesService: SchedulesService,
     @Inject(GUEST_ADDRESS_LOOKUP)
     private readonly guestAddressLookup: GuestAddressLookup,
+    @Inject(USERS_SERVICE)
+    private readonly usersService: IUsersService,
   ) {}
 
   async create(
@@ -91,12 +95,10 @@ export class PreOrdersService {
     this.assertFulfillmentEnabled(dto.fulfillmentType, settings);
     this.assertPaymentMethodEnabled(dto.paymentMethod, settings);
 
-    let customerPhone: string;
-    try {
-      customerPhone = normalizePhone(dto.customerPhone);
-    } catch {
-      throwOrderBusinessError('VALIDATION', 'Некорректный телефон гостя');
-    }
+    const customerPhone = await this.resolveCustomerPhone(
+      userId,
+      dto.customerPhone,
+    );
 
     let recipientPhone: string | null = null;
     if (dto.recipientPhone?.trim()) {
@@ -501,5 +503,33 @@ export class PreOrdersService {
     }
 
     throwOrderNumberConflict();
+  }
+
+  private async resolveCustomerPhone(
+    userId: string,
+    rawPhone?: string,
+  ): Promise<string> {
+    const trimmed = rawPhone?.trim();
+    if (trimmed) {
+      try {
+        return normalizePhone(trimmed);
+      } catch {
+        throwOrderBusinessError('VALIDATION', 'Некорректный телефон гостя');
+      }
+    }
+
+    const user = await this.usersService.findById(userId);
+    if (user?.phone) {
+      try {
+        return normalizePhone(user.phone);
+      } catch {
+        throwOrderBusinessError('VALIDATION', 'Некорректный телефон гостя');
+      }
+    }
+
+    throwOrderBusinessError(
+      'PHONE_REQUIRED',
+      'Укажите номер телефона для оформления заказа',
+    );
   }
 }

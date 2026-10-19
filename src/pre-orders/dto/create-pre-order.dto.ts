@@ -66,10 +66,10 @@ export class CreatePreOrderDto {
   @MaxLength(120)
   customerName: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(32)
-  customerPhone: string;
+  customerPhone?: string;
 
   @IsOptional()
   @IsUuidV7()
