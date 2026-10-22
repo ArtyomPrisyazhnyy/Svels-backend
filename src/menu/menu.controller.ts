@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Inject,
   Delete,
   Get,
   Param,
@@ -29,6 +30,8 @@ import {
   ReorderMenuCategoriesDto,
   UpdateMenuCategoryDto,
 } from './dto/menu-category.dto';
+import { RESTAURANTS_SERVICE } from '../common/constants/injection-tokens';
+import type { RestaurantApprovalPort } from '../auth/telegram-webapp/interfaces/restaurant-approval.port';
 import { MenuService } from './menu.service';
 
 @Controller('restaurants/:restaurantId/menu')
@@ -36,10 +39,13 @@ export class MenuController {
   constructor(
     private readonly menuService: MenuService,
     private readonly mediaUploadService: MediaUploadService,
+    @Inject(RESTAURANTS_SERVICE)
+    private readonly restaurantsService: RestaurantApprovalPort,
   ) {}
 
   @Get()
-  getMenu(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
+  async getMenu(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
+    await this.restaurantsService.ensureApproved(restaurantId);
     return this.menuService.getMenuByRestaurant(restaurantId);
   }
 

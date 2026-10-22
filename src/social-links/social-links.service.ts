@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CacheKeys, CacheTtl } from '../cache/cache-keys';
+import { CacheService } from '../cache/cache.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import {
@@ -19,18 +21,28 @@ export class SocialLinksService {
   constructor(
     @InjectRepository(RestaurantSocialLink)
     private readonly linkRepository: Repository<RestaurantSocialLink>,
+    private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
   async getByRestaurant(
     restaurantId: string,
   ): Promise<SocialLinkResponseDto[]> {
+    const cacheKey = CacheKeys.socialLinks(restaurantId);
+    const cached =
+      await this.cacheService.get<SocialLinkResponseDto[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const links = await this.linkRepository.find({
       where: { restaurantId },
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
 
-    return links.map((link) => this.toResponse(link));
+    const response = links.map((link) => this.toResponse(link));
+    await this.cacheService.set(cacheKey, response, CacheTtl.publicRestaurant);
+    return response;
   }
 
   async create(
@@ -47,6 +59,7 @@ export class SocialLinksService {
     });
 
     const saved = await this.linkRepository.save(link);
+    await this.invalidateCache(restaurantId);
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
@@ -75,6 +88,7 @@ export class SocialLinksService {
     }
 
     const saved = await this.linkRepository.save(link);
+    await this.invalidateCache(restaurantId);
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
@@ -84,9 +98,14 @@ export class SocialLinksService {
   async remove(restaurantId: string, linkId: string): Promise<void> {
     const link = await this.findOwnedLink(restaurantId, linkId);
     await this.linkRepository.remove(link);
+    await this.invalidateCache(restaurantId);
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
+  }
+
+  private async invalidateCache(restaurantId: string): Promise<void> {
+    await this.cacheService.del(CacheKeys.socialLinks(restaurantId));
   }
 
   private async findOwnedLink(

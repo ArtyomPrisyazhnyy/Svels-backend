@@ -1,12 +1,16 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { RESTAURANTS_SERVICE } from '../common/constants/injection-tokens';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
+import type { RestaurantsService } from './restaurants.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import {
@@ -31,6 +35,8 @@ export class RestaurantLocationsService {
     private readonly locationRepository: Repository<RestaurantLocation>,
     @InjectRepository(Restaurant)
     private readonly restaurantRepository: Repository<Restaurant>,
+    @Inject(forwardRef(() => RESTAURANTS_SERVICE))
+    private readonly restaurantsService: Pick<RestaurantsService, 'findById'>,
     private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
@@ -38,8 +44,7 @@ export class RestaurantLocationsService {
   async getByRestaurant(
     restaurantId: string,
   ): Promise<RestaurantLocationResponseDto[]> {
-    await this.ensureRestaurant(restaurantId);
-    await this.ensureSeeded(restaurantId);
+    await this.restaurantsService.findById(restaurantId);
 
     const cached = await this.cacheService.get<RestaurantLocationResponseDto[]>(
       CacheKeys.restaurantLocations(restaurantId),
@@ -64,7 +69,8 @@ export class RestaurantLocationsService {
     restaurantId: string,
     dto: CreateRestaurantLocationDto,
   ): Promise<RestaurantLocationResponseDto> {
-    await this.ensureRestaurant(restaurantId);
+    await this.restaurantsService.findById(restaurantId);
+    await this.ensureSeeded(restaurantId);
 
     const location = this.locationRepository.create({
       restaurantId,
@@ -228,16 +234,6 @@ export class RestaurantLocationsService {
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
-  }
-
-  private async ensureRestaurant(restaurantId: string): Promise<Restaurant> {
-    const restaurant = await this.restaurantRepository.findOne({
-      where: { id: restaurantId },
-    });
-    if (!restaurant) {
-      throw new NotFoundException('Ресторан не найден');
-    }
-    return restaurant;
   }
 
   private async findOwned(

@@ -9,17 +9,36 @@ describe('OrderSettingsService', () => {
     save: jest.fn(),
   };
 
+  const cacheService = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn(),
+    del: jest.fn(),
+  };
+
   const nextRevalidationService = {
     revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
   };
 
   const service = new OrderSettingsService(
     repository as never,
+    cacheService as never,
     nextRevalidationService as never,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('returns defaults on public read without findOrCreate', async () => {
+    repository.findOne.mockResolvedValue(null);
+
+    const result = await service.getPublicByRestaurant(
+      '019efb61-5d8e-7058-b838-6f2696cb4204',
+    );
+
+    expect(result.fulfillmentTakeaway).toBe(true);
+    expect(repository.save).not.toHaveBeenCalled();
+    expect(cacheService.set).toHaveBeenCalled();
   });
 
   it('rejects update when all fulfillment options are disabled', async () => {

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
+import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import { CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 import { WorkSchedule } from './entities/work-schedule.entity';
 
@@ -12,6 +13,7 @@ export class SchedulesService {
     @InjectRepository(WorkSchedule)
     private readonly scheduleRepository: Repository<WorkSchedule>,
     private readonly cacheService: CacheService,
+    private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
   async getByRestaurant(restaurantId: string): Promise<WorkSchedule[]> {
@@ -71,5 +73,8 @@ export class SchedulesService {
 
   private async invalidateCache(restaurantId: string): Promise<void> {
     await this.cacheService.del(CacheKeys.schedules(restaurantId));
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
   }
 }

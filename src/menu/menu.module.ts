@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RestaurantsModule } from '../restaurants/restaurants.module';
 import { MENU_SERVICE } from '../common/constants/injection-tokens';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { MenuCategory } from './entities/menu-category.entity';
@@ -8,7 +9,10 @@ import { MenuController } from './menu.controller';
 import { MenuService } from './menu.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MenuCategory, MenuItem])],
+  imports: [
+    TypeOrmModule.forFeature([MenuCategory, MenuItem]),
+    RestaurantsModule,
+  ],
   controllers: [MenuController],
   providers: [
     MenuService,
