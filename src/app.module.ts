@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { SentryModule } from '@sentry/nestjs/setup';
-import { APP_GUARD } from '@nestjs/core';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import appConfig from './config/app.config';
 import { validateEnv } from './config/env.validation';
 import { isDevEndpointsEnabled } from './config/is-dev-endpoints-enabled';
@@ -114,6 +114,14 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
     TelegramBotModule,
   ],
   providers: [
+    ...(includeSentry
+      ? [
+          {
+            provide: APP_FILTER,
+            useClass: SentryGlobalFilter,
+          },
+        ]
+      : []),
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

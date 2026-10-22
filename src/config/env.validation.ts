@@ -5,12 +5,14 @@ import { IsEnum, IsOptional, IsString, validateSync } from 'class-validator';
 const DEFAULT_JWT_SECRET = 'change-me-in-production';
 const DEFAULT_REVALIDATE_SECRET = 'dev-revalidate-secret';
 const DEFAULT_OTP_PEPPER = 'otp-dev-pepper';
+const DEFAULT_DB_PASSWORD = 'postgres';
 const MIN_SECRET_LENGTH = 32;
 
 const PRODUCTION_INSECURE_VALUES: Record<string, readonly string[]> = {
   JWT_SECRET: [DEFAULT_JWT_SECRET],
   REVALIDATE_SECRET: [DEFAULT_REVALIDATE_SECRET],
   OTP_PEPPER: [DEFAULT_OTP_PEPPER],
+  DB_PASSWORD: [DEFAULT_DB_PASSWORD],
 };
 
 export enum NodeEnvironment {
@@ -23,6 +25,66 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsEnum(NodeEnvironment)
   NODE_ENV?: NodeEnvironment;
+
+  @IsOptional()
+  @IsString()
+  DATABASE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  DB_HOST?: string;
+
+  @IsOptional()
+  @IsString()
+  DB_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  REDIS_ENABLED?: string;
+
+  @IsOptional()
+  @IsString()
+  REDIS_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  THROTTLER_STORAGE?: string;
+
+  @IsOptional()
+  @IsString()
+  STORAGE_DRIVER?: string;
+
+  @IsOptional()
+  @IsString()
+  YANDEX_STORAGE_BUCKET?: string;
+
+  @IsOptional()
+  @IsString()
+  YANDEX_STORAGE_ACCESS_KEY_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  YANDEX_STORAGE_SECRET_ACCESS_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  CORS_ALLOWED_ORIGINS?: string;
+
+  @IsOptional()
+  @IsString()
+  GOOGLE_OAUTH_CLIENT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  TELEGRAM_BOT_TOKEN?: string;
+
+  @IsOptional()
+  @IsString()
+  TELEGRAM_BOT_USERNAME?: string;
+
+  @IsOptional()
+  @IsString()
+  TELEGRAM_WEBHOOK_SECRET?: string;
 
   @IsOptional()
   @IsString()
@@ -74,11 +136,107 @@ function assertProductionSecret(
   }
 }
 
+function assertProductionNonEmpty(
+  name: string,
+  rawValue: string | undefined,
+): void {
+  if (!rawValue?.trim()) {
+    throw new Error(`${name} is required in production`);
+  }
+}
+
+function assertProductionDatabase(env: EnvironmentVariables): void {
+  const databaseUrl = env.DATABASE_URL?.trim();
+  if (databaseUrl) {
+    return;
+  }
+
+  assertProductionNonEmpty('DB_HOST', env.DB_HOST);
+  assertProductionSecret(
+    'DB_PASSWORD',
+    env.DB_PASSWORD,
+    PRODUCTION_INSECURE_VALUES.DB_PASSWORD,
+  );
+}
+
+function assertProductionCors(env: EnvironmentVariables): void {
+  const origins = env.CORS_ALLOWED_ORIGINS?.trim() ?? '';
+  if (!origins) {
+    throw new Error('CORS_ALLOWED_ORIGINS is required in production');
+  }
+
+  const entries = origins
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (entries.length === 0) {
+    throw new Error('CORS_ALLOWED_ORIGINS must list at least one origin');
+  }
+
+  const invalid = entries.filter((origin) => !origin.startsWith('https://'));
+  if (invalid.length > 0) {
+    throw new Error(
+      'CORS_ALLOWED_ORIGINS must use https:// origins in production',
+    );
+  }
+}
+
+function assertProductionRedis(env: EnvironmentVariables): void {
+  if (env.REDIS_ENABLED === 'false') {
+    return;
+  }
+
+  assertProductionSecret('REDIS_PASSWORD', env.REDIS_PASSWORD, []);
+
+  if (env.THROTTLER_STORAGE?.trim() !== 'redis') {
+    throw new Error('THROTTLER_STORAGE must be redis in production');
+  }
+}
+
+function assertProductionStorage(env: EnvironmentVariables): void {
+  const driver = env.STORAGE_DRIVER?.trim() ?? 'local';
+  if (driver !== 'yandex') {
+    throw new Error('STORAGE_DRIVER must be yandex in production');
+  }
+
+  assertProductionNonEmpty('YANDEX_STORAGE_BUCKET', env.YANDEX_STORAGE_BUCKET);
+  assertProductionNonEmpty(
+    'YANDEX_STORAGE_ACCESS_KEY_ID',
+    env.YANDEX_STORAGE_ACCESS_KEY_ID,
+  );
+  assertProductionNonEmpty(
+    'YANDEX_STORAGE_SECRET_ACCESS_KEY',
+    env.YANDEX_STORAGE_SECRET_ACCESS_KEY,
+  );
+}
+
+function assertProductionTelegram(env: EnvironmentVariables): void {
+  assertProductionNonEmpty('TELEGRAM_BOT_TOKEN', env.TELEGRAM_BOT_TOKEN);
+  assertProductionNonEmpty('TELEGRAM_BOT_USERNAME', env.TELEGRAM_BOT_USERNAME);
+  assertProductionSecret(
+    'TELEGRAM_WEBHOOK_SECRET',
+    env.TELEGRAM_WEBHOOK_SECRET,
+    [],
+  );
+}
+
 function assertProductionSecrets(env: EnvironmentVariables): void {
   const nodeEnv = env.NODE_ENV ?? NodeEnvironment.Development;
   if (nodeEnv !== NodeEnvironment.Production) {
     return;
   }
+
+  assertProductionDatabase(env);
+  assertProductionCors(env);
+  assertProductionRedis(env);
+  assertProductionStorage(env);
+  assertProductionTelegram(env);
+
+  assertProductionNonEmpty(
+    'GOOGLE_OAUTH_CLIENT_ID',
+    env.GOOGLE_OAUTH_CLIENT_ID,
+  );
 
   assertProductionSecret(
     'JWT_SECRET',

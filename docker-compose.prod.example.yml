@@ -1,0 +1,126 @@
+# Пример production-стека. Скопируйте в deploy/docker-compose.prod.yml или используйте как есть:
+#   cp docker-compose.prod.example.yml deploy/docker-compose.prod.yml
+# Создайте deploy/.env из корневого .env.example (без реальных секретов в git).
+#
+# Сборка API:
+#   docker build --build-arg GIT_SHA=$(git rev-parse HEAD) -t svels-api:latest .
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_DB: ${DB_NAME:-svels}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Опционально: автоматический migrate перед API. Альтернатива — ручной шаг (см. docs/deploy.md).
+  migrate:
+    image: svels-api:${API_TAG:-latest}
+    restart: 'no'
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ['node', 'deploy/run-migrations.mjs']
+
+  api:
+    image: svels-api:${API_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      THROTTLER_STORAGE: redis
+      IMAGE_PROCESSOR_IN_API: 'false'
+      TRUST_PROXY: loopback, linklocal, uniquelocal
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    expose:
+      - '3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  worker:
+    image: svels-api:${API_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      IMAGE_PROCESSOR_IN_API: 'false'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    command: ['node', 'dist/worker']
+
+  web:
+    image: svels-client:${WEB_TAG:-latest}
+    restart: unless-stopped
+    expose:
+      - '3000'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

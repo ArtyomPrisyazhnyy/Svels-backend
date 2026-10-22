@@ -1,3 +1,4 @@
+import './instrument';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { WorkerModule } from './worker.module';

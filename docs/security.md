@@ -5,7 +5,13 @@
 При `NODE_ENV=production` приложение **не стартует**, если:
 
 - `JWT_SECRET`, `BEPAY_CREDENTIALS_ENCRYPTION_KEY`, `REVALIDATE_SECRET` или эффективный `OTP_PEPPER` пустые, короче **32 символов** или совпадают с примерами из `.env.example` / дефолтами кода;
-- не заданы `API_PUBLIC_URL` и `NEXT_SITE_URL`.
+- не заданы `API_PUBLIC_URL` и `NEXT_SITE_URL`;
+- нет `DATABASE_URL` или пары `DB_HOST` + надёжный `DB_PASSWORD`;
+- не заданы `CORS_ALLOWED_ORIGINS` (только `https://`), `GOOGLE_OAUTH_CLIENT_ID`, настройки Telegram-бота;
+- Redis включён, но нет `REDIS_PASSWORD` / `THROTTLER_STORAGE=redis`;
+- `STORAGE_DRIVER` не `yandex` или не заполнены ключи Object Storage.
+
+Полный чеклист деплоя: [deploy.md](./deploy.md).
 
 Генерируйте длинные случайные значения (например `openssl rand -base64 48`).
 

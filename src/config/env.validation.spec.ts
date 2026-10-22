@@ -4,11 +4,23 @@ describe('validateEnv', () => {
   const productionSecret = 'a'.repeat(32);
   const productionBase = {
     NODE_ENV: 'production',
+    DATABASE_URL: 'postgresql://user:pass@host.example/db?sslmode=require',
     JWT_SECRET: productionSecret,
     BEPAY_CREDENTIALS_ENCRYPTION_KEY: productionSecret,
     REVALIDATE_SECRET: productionSecret,
     API_PUBLIC_URL: 'https://api.example.com',
     NEXT_SITE_URL: 'https://example.com',
+    CORS_ALLOWED_ORIGINS: 'https://app.example.com,https://admin.example.com',
+    GOOGLE_OAUTH_CLIENT_ID: 'google-oauth-client-id',
+    TELEGRAM_BOT_TOKEN: 'telegram-bot-token',
+    TELEGRAM_BOT_USERNAME: 'svels_bot',
+    TELEGRAM_WEBHOOK_SECRET: productionSecret,
+    REDIS_PASSWORD: productionSecret,
+    THROTTLER_STORAGE: 'redis',
+    STORAGE_DRIVER: 'yandex',
+    YANDEX_STORAGE_BUCKET: 'svels-media',
+    YANDEX_STORAGE_ACCESS_KEY_ID: 'access-key',
+    YANDEX_STORAGE_SECRET_ACCESS_KEY: 'secret-key',
   };
 
   it('passes in development with defaults', () => {
@@ -100,7 +112,73 @@ describe('validateEnv', () => {
     ).toThrow(/NEXT_SITE_URL is required in production/);
   });
 
+  it('fails in production without DATABASE_URL or DB_HOST', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        DATABASE_URL: '',
+        DB_HOST: '',
+      }),
+    ).toThrow(/DB_HOST is required in production/);
+  });
+
+  it('fails in production without CORS_ALLOWED_ORIGINS', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        CORS_ALLOWED_ORIGINS: '',
+      }),
+    ).toThrow(/CORS_ALLOWED_ORIGINS is required in production/);
+  });
+
+  it('fails in production with non-https CORS origins', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        CORS_ALLOWED_ORIGINS: 'http://app.example.com',
+      }),
+    ).toThrow(/CORS_ALLOWED_ORIGINS must use https:\/\/ origins in production/);
+  });
+
+  it('fails in production without GOOGLE_OAUTH_CLIENT_ID', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        GOOGLE_OAUTH_CLIENT_ID: '',
+      }),
+    ).toThrow(/GOOGLE_OAUTH_CLIENT_ID is required in production/);
+  });
+
+  it('fails in production without telegram bot settings', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        TELEGRAM_BOT_TOKEN: '',
+      }),
+    ).toThrow(/TELEGRAM_BOT_TOKEN is required in production/);
+  });
+
+  it('fails in production when storage is not yandex', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        STORAGE_DRIVER: 'local',
+      }),
+    ).toThrow(/STORAGE_DRIVER must be yandex in production/);
+  });
+
   it('passes in production with required secrets', () => {
     expect(() => validateEnv(productionBase)).not.toThrow();
+  });
+
+  it('passes in production with DB_HOST instead of DATABASE_URL', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        DATABASE_URL: '',
+        DB_HOST: 'postgres',
+        DB_PASSWORD: productionSecret,
+      }),
+    ).not.toThrow();
   });
 });
