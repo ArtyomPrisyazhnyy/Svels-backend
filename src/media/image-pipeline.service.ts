@@ -37,8 +37,6 @@ export class ImagePipelineService {
     ]);
 
     return {
-      fallbackUrl: fallback.url,
-      webpUrl: webp.url,
       fallbackKey: fallback.key,
       webpKey: webp.key,
     };

@@ -1,9 +1,9 @@
 /**
- * Переносит локальные /uploads изображения в текущий STORAGE_DRIVER (обычно yandex),
- * конвертирует в JPEG/PNG fallback + WebP и обновляет URL в БД.
+ * Переносит локальные /uploads изображения в текущий STORAGE_DRIVER (s3),
+ * конвертирует в JPEG/PNG fallback + WebP и сохраняет object keys в БД.
  *
  * Перед запуском:
- * 1. Настройте Yandex Object Storage в .env (STORAGE_DRIVER=yandex, ключи, bucket, public URL)
+ * 1. Настройте S3 в .env (STORAGE_DRIVER=s3, S3_*)
  * 2. Включите публичное чтение объектов в бакете
  * 3. Убедитесь, что колонки imageWebpUrl / galleryWebpUrls / logoWebpUrl существуют
  *    (dev: synchronize; prod: scripts/add-image-webp-columns.sql)
@@ -28,7 +28,14 @@ const MAX_WIDTH = parseInt(process.env.IMAGE_MAX_WIDTH ?? '1600', 10);
 const JPEG_QUALITY = parseInt(process.env.IMAGE_JPEG_QUALITY ?? '82', 10);
 const WEBP_QUALITY = parseInt(process.env.IMAGE_WEBP_QUALITY ?? '80', 10);
 
-type Driver = 'local' | 'yandex';
+type Driver = 'local' | 's3';
+
+function parseBooleanEnv(raw: string | undefined, defaultValue: boolean): boolean {
+  if (raw === undefined || raw.trim() === '') {
+    return defaultValue;
+  }
+  return raw === 'true' || raw === '1';
+}
 
 interface Converted {
   fallbackBuffer: Buffer;
@@ -85,36 +92,33 @@ function localPathFromUrl(url: string): string | null {
   return null;
 }
 
-function isAlreadyWebpPair(url: string, webpUrl: string | null): boolean {
+function isAlreadyMigratedKey(url: string, webpUrl: string | null): boolean {
   if (!webpUrl) return false;
-  if (url.includes('storage.yandexcloud.net') && webpUrl.endsWith('.webp')) {
-    return true;
+  if (url.startsWith('http') || url.startsWith('/uploads/')) {
+    return false;
   }
-  return webpUrl.endsWith('.webp') && !url.startsWith('/uploads/');
+  return webpUrl.endsWith('.webp');
 }
 
 async function main(): Promise<void> {
   const driver = (process.env.STORAGE_DRIVER ?? 'local') as Driver;
-  const bucket = process.env.YANDEX_STORAGE_BUCKET ?? '';
-  const publicBaseUrl = (
-    process.env.YANDEX_STORAGE_PUBLIC_BASE_URL ??
-    (bucket ? `https://storage.yandexcloud.net/${bucket}` : '')
-  ).replace(/\/$/, '');
+  const bucket = process.env.S3_BUCKET ?? '';
+  const endpoint = process.env.S3_ENDPOINT ?? '';
 
-  if (driver === 'yandex' && (!bucket || !publicBaseUrl)) {
-    throw new Error('Для STORAGE_DRIVER=yandex задайте YANDEX_STORAGE_BUCKET и PUBLIC_BASE_URL');
+  if (driver === 's3' && (!bucket || !endpoint)) {
+    throw new Error('Для STORAGE_DRIVER=s3 задайте S3_BUCKET и S3_ENDPOINT');
   }
 
   const s3 =
-    driver === 'yandex'
+    driver === 's3'
       ? new S3Client({
-          region: process.env.YANDEX_STORAGE_REGION ?? 'ru-central1',
-          endpoint: process.env.YANDEX_STORAGE_ENDPOINT ?? 'https://storage.yandexcloud.net',
+          region: process.env.S3_REGION ?? 'us-east-1',
+          endpoint,
           credentials: {
-            accessKeyId: process.env.YANDEX_STORAGE_ACCESS_KEY_ID ?? '',
-            secretAccessKey: process.env.YANDEX_STORAGE_SECRET_ACCESS_KEY ?? '',
+            accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
+            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
           },
-          forcePathStyle: true,
+          forcePathStyle: parseBooleanEnv(process.env.S3_FORCE_PATH_STYLE, true),
         })
       : null;
 
@@ -125,10 +129,10 @@ async function main(): Promise<void> {
 
   async function store(key: string, body: Buffer, contentType: string): Promise<string> {
     if (dryRun) {
-      return driver === 'yandex' ? `${publicBaseUrl}/${key}` : `/uploads/${key}`;
+      return key;
     }
 
-    if (driver === 'yandex' && s3) {
+    if (driver === 's3' && s3) {
       await s3.send(
         new PutObjectCommand({
           Bucket: bucket,
@@ -138,7 +142,7 @@ async function main(): Promise<void> {
           CacheControl: 'public, max-age=31536000, immutable',
         }),
       );
-      return `${publicBaseUrl}/${key}`;
+      return key;
     }
 
     const { mkdir, writeFile } = await import('fs/promises');
@@ -146,13 +150,13 @@ async function main(): Promise<void> {
     const absolute = join(process.cwd(), 'uploads', key);
     await mkdir(dirname(absolute), { recursive: true });
     await writeFile(absolute, body);
-    return `/uploads/${key}`;
+    return key;
   }
 
   async function migrateOne(
     sourceUrl: string,
     keyPrefix: string,
-  ): Promise<{ url: string; webpUrl: string } | null> {
+  ): Promise<{ fallbackKey: string; webpKey: string } | null> {
     const localPath = localPathFromUrl(sourceUrl);
     let buffer: Buffer | null = null;
 
@@ -184,12 +188,12 @@ async function main(): Promise<void> {
     const fallbackKey = `${keyPrefix}${converted.fallbackExtension}`;
     const webpKey = `${keyPrefix}.webp`;
 
-    const [url, webpUrl] = await Promise.all([
+    const [storedFallbackKey, storedWebpKey] = await Promise.all([
       store(fallbackKey, converted.fallbackBuffer, converted.fallbackContentType),
       store(webpKey, converted.webpBuffer, 'image/webp'),
     ]);
 
-    return { url, webpUrl };
+    return { fallbackKey: storedFallbackKey, webpKey: storedWebpKey };
   }
 
   // --- menu items ---
@@ -212,14 +216,14 @@ async function main(): Promise<void> {
     const galleryUrls = [...(item.galleryUrls ?? [])];
     const galleryWebpUrls = [...(item.galleryWebpUrls ?? [])];
 
-    if (!isAlreadyWebpPair(item.imageUrl, item.imageWebpUrl)) {
+    if (!isAlreadyMigratedKey(item.imageUrl, item.imageWebpUrl)) {
       const migrated = await migrateOne(
         item.imageUrl,
         `menu/${item.restaurantId}/${item.id}-cover`,
       );
       if (migrated) {
-        imageUrl = migrated.url;
-        imageWebpUrl = migrated.webpUrl;
+        imageUrl = migrated.fallbackKey;
+        imageWebpUrl = migrated.webpKey;
         console.log(`  cover → ${imageUrl}`);
       }
     } else {
@@ -229,7 +233,7 @@ async function main(): Promise<void> {
     for (let i = 0; i < galleryUrls.length; i += 1) {
       const current = galleryUrls[i];
       const currentWebp = galleryWebpUrls[i] ?? null;
-      if (isAlreadyWebpPair(current, currentWebp)) {
+      if (isAlreadyMigratedKey(current, currentWebp)) {
         continue;
       }
       const migrated = await migrateOne(
@@ -237,9 +241,9 @@ async function main(): Promise<void> {
         `menu/${item.restaurantId}/${item.id}-gallery-${i}`,
       );
       if (migrated) {
-        galleryUrls[i] = migrated.url;
-        galleryWebpUrls[i] = migrated.webpUrl;
-        console.log(`  gallery[${i}] → ${migrated.url}`);
+        galleryUrls[i] = migrated.fallbackKey;
+        galleryWebpUrls[i] = migrated.webpKey;
+        console.log(`  gallery[${i}] → ${migrated.fallbackKey}`);
       }
     }
 
@@ -278,7 +282,7 @@ async function main(): Promise<void> {
   for (const restaurant of restaurants.rows) {
     if (!restaurant.logoUrl) continue;
     console.log(`Restaurant logo ${restaurant.id}`);
-    if (isAlreadyWebpPair(restaurant.logoUrl, restaurant.logoWebpUrl)) {
+    if (isAlreadyMigratedKey(restaurant.logoUrl, restaurant.logoWebpUrl)) {
       console.log('  already migrated');
       continue;
     }
@@ -287,11 +291,11 @@ async function main(): Promise<void> {
       `restaurants/${restaurant.id}/logo/${restaurant.id}`,
     );
     if (!migrated) continue;
-    console.log(`  logo → ${migrated.url}`);
+    console.log(`  logo → ${migrated.fallbackKey}`);
     if (!dryRun) {
       await client.query(
         `UPDATE restaurants SET "logoUrl" = $1, "logoWebpUrl" = $2 WHERE id = $3`,
-        [migrated.url, migrated.webpUrl, restaurant.id],
+        [migrated.fallbackKey, migrated.webpKey, restaurant.id],
       );
     }
   }

@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
+import { PublicMediaUrlService } from '../storage/public-media-url.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import {
   CreateMenuCategoryDto,
@@ -39,13 +40,19 @@ export class MenuService {
     private readonly itemRepository: Repository<MenuItem>,
     private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
+    private readonly publicMediaUrlService: PublicMediaUrlService,
   ) {}
 
   async getMenuByRestaurant(restaurantId: string): Promise<MenuWithCategories> {
     const cacheKey = CacheKeys.menu(restaurantId);
     const cached = await this.cacheService.get<MenuWithCategories>(cacheKey);
     if (cached) {
-      return cached;
+      return {
+        categories: cached.categories.map((category) => ({
+          ...category,
+          items: category.items.map((item) => this.mapItemForResponse(item)),
+        })),
+      };
     }
 
     const categories = await this.categoryRepository.find({
@@ -61,7 +68,9 @@ export class MenuService {
     const result: MenuWithCategories = {
       categories: categories.map((category) => ({
         ...category,
-        items: items.filter((item) => item.categoryId === category.id),
+        items: items
+          .filter((item) => item.categoryId === category.id)
+          .map((item) => this.mapItemForResponse(item)),
       })),
     };
 
@@ -192,16 +201,16 @@ export class MenuService {
       price: dto.price,
       oldPrice,
       isAvailable: dto.isAvailable ?? true,
-      imageUrl: dto.imageUrl,
-      imageWebpUrl: dto.imageWebpUrl ?? null,
-      galleryUrls: dto.galleryUrls ?? [],
-      galleryWebpUrls: dto.galleryWebpUrls ?? [],
+      imageUrl: this.normalizeMediaKey(dto.imageUrl),
+      imageWebpUrl: this.normalizeOptionalMediaKey(dto.imageWebpUrl),
+      galleryUrls: this.normalizeMediaKeys(dto.galleryUrls ?? []),
+      galleryWebpUrls: this.normalizeMediaKeys(dto.galleryWebpUrls ?? []),
       modifierGroups: normalizeModifierGroups(dto.modifierGroups),
     });
 
     const saved = await this.itemRepository.save(item);
     await this.invalidateCache(restaurantId);
-    return saved;
+    return this.mapItemForResponse(saved);
   }
 
   async updateItem(
@@ -249,18 +258,25 @@ export class MenuService {
       );
     }
     if (dto.isAvailable !== undefined) item.isAvailable = dto.isAvailable;
-    if (dto.imageUrl !== undefined) item.imageUrl = dto.imageUrl;
-    if (dto.imageWebpUrl !== undefined) item.imageWebpUrl = dto.imageWebpUrl;
-    if (dto.galleryUrls !== undefined) item.galleryUrls = dto.galleryUrls;
-    if (dto.galleryWebpUrls !== undefined)
-      item.galleryWebpUrls = dto.galleryWebpUrls;
+    if (dto.imageUrl !== undefined) {
+      item.imageUrl = this.normalizeMediaKey(dto.imageUrl);
+    }
+    if (dto.imageWebpUrl !== undefined) {
+      item.imageWebpUrl = this.normalizeOptionalMediaKey(dto.imageWebpUrl);
+    }
+    if (dto.galleryUrls !== undefined) {
+      item.galleryUrls = this.normalizeMediaKeys(dto.galleryUrls);
+    }
+    if (dto.galleryWebpUrls !== undefined) {
+      item.galleryWebpUrls = this.normalizeMediaKeys(dto.galleryWebpUrls);
+    }
     if (dto.modifierGroups !== undefined) {
       item.modifierGroups = normalizeModifierGroups(dto.modifierGroups);
     }
 
     const saved = await this.itemRepository.save(item);
     await this.invalidateCache(restaurantId);
-    return saved;
+    return this.mapItemForResponse(saved);
   }
 
   async deleteItem(restaurantId: string, itemId: string): Promise<void> {
@@ -316,6 +332,40 @@ export class MenuService {
     if (!category) {
       throw new BadRequestException('Категория не найдена в этом ресторане');
     }
+  }
+
+  private mapItemForResponse(item: MenuItem): MenuItem {
+    return {
+      ...item,
+      imageUrl:
+        this.publicMediaUrlService.toPublicUrl(item.imageUrl) ?? item.imageUrl,
+      imageWebpUrl: this.publicMediaUrlService.toPublicUrl(item.imageWebpUrl),
+      galleryUrls: this.publicMediaUrlService.toPublicUrls(item.galleryUrls),
+      galleryWebpUrls: this.publicMediaUrlService.toPublicUrls(
+        item.galleryWebpUrls,
+      ),
+    };
+  }
+
+  private normalizeMediaKey(value: string): string {
+    const key = this.publicMediaUrlService.toStorageKey(value);
+    if (!key) {
+      throw new BadRequestException('Некорректный путь изображения');
+    }
+    return key;
+  }
+
+  private normalizeOptionalMediaKey(
+    value: string | null | undefined,
+  ): string | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    return this.normalizeMediaKey(value);
+  }
+
+  private normalizeMediaKeys(values: string[]): string[] {
+    return values.map((value) => this.normalizeMediaKey(value));
   }
 
   private async invalidateCache(restaurantId: string): Promise<void> {

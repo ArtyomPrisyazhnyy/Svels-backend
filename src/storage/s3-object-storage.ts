@@ -6,51 +6,52 @@ import {
 } from '@aws-sdk/client-s3';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  extractObjectKeyFromValue,
+  normalizeStorageKey,
+} from './storage-object-key.util';
 import type { ObjectStorage, StoredObject } from './storage.types';
 
 @Injectable()
-export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
-  private readonly logger = new Logger(YandexObjectStorage.name);
+export class S3ObjectStorage implements ObjectStorage, OnModuleInit {
+  private readonly logger = new Logger(S3ObjectStorage.name);
   private readonly client: S3Client;
   private readonly bucket: string;
   private readonly publicBaseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.bucket = this.configService.get<string>('storage.yandex.bucket', '');
+    this.bucket = this.configService.get<string>('storage.s3.bucket', '');
     this.publicBaseUrl = this.configService
-      .get<string>('storage.yandex.publicBaseUrl', '')
+      .get<string>('storage.s3.publicBaseUrl', '')
       .replace(/\/$/, '');
 
     this.client = new S3Client({
-      region: this.configService.get<string>(
-        'storage.yandex.region',
-        'ru-central1',
-      ),
-      endpoint: this.configService.get<string>(
-        'storage.yandex.endpoint',
-        'https://storage.yandexcloud.net',
-      ),
+      region: this.configService.get<string>('storage.s3.region', 'us-east-1'),
+      endpoint: this.configService.get<string>('storage.s3.endpoint', ''),
       credentials: {
         accessKeyId: this.configService.get<string>(
-          'storage.yandex.accessKeyId',
+          'storage.s3.accessKeyId',
           '',
         ),
         secretAccessKey: this.configService.get<string>(
-          'storage.yandex.secretAccessKey',
+          'storage.s3.secretAccessKey',
           '',
         ),
       },
-      forcePathStyle: true,
+      forcePathStyle: this.configService.get<boolean>(
+        'storage.s3.forcePathStyle',
+        true,
+      ),
     });
   }
 
   onModuleInit(): void {
     if (!this.bucket || !this.publicBaseUrl) {
       this.logger.error(
-        'Yandex Object Storage включён, но не заданы YANDEX_STORAGE_BUCKET / PUBLIC_BASE_URL',
+        'S3 storage включён, но не заданы S3_BUCKET / S3_PUBLIC_BASE_URL',
       );
     } else {
-      this.logger.log(`Yandex Object Storage bucket=${this.bucket}`);
+      this.logger.log(`S3 object storage bucket=${this.bucket}`);
     }
   }
 
@@ -59,7 +60,7 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
     body: Buffer;
     contentType: string;
   }): Promise<StoredObject> {
-    const key = this.normalizeKey(params.key);
+    const key = normalizeStorageKey(params.key);
     await this.client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
@@ -81,7 +82,7 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
       const response = await this.client.send(
         new GetObjectCommand({
           Bucket: this.bucket,
-          Key: this.normalizeKey(key),
+          Key: normalizeStorageKey(key),
         }),
       );
       if (!response.Body) {
@@ -98,7 +99,7 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
       await this.client.send(
         new DeleteObjectCommand({
           Bucket: this.bucket,
-          Key: this.normalizeKey(key),
+          Key: normalizeStorageKey(key),
         }),
       );
     } catch (error) {
@@ -107,37 +108,10 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
   }
 
   resolveKeyFromUrl(url: string): string | null {
-    if (!url) {
-      return null;
-    }
-
-    const base = this.publicBaseUrl;
-    if (base && url.startsWith(`${base}/`)) {
-      return this.normalizeKey(url.slice(base.length + 1));
-    }
-
-    try {
-      const parsed = new URL(url);
-      const path = parsed.pathname.replace(/^\/+/, '');
-      if (path.startsWith(`${this.bucket}/`)) {
-        return this.normalizeKey(path.slice(this.bucket.length + 1));
-      }
-      // virtual-hosted: bucket.storage.yandexcloud.net/key
-      if (parsed.hostname.startsWith(`${this.bucket}.`)) {
-        return this.normalizeKey(path);
-      }
-    } catch {
-      // ignore
-    }
-
-    if (url.startsWith('/uploads/')) {
-      return this.normalizeKey(url.slice('/uploads/'.length));
-    }
-
-    return null;
-  }
-
-  private normalizeKey(key: string): string {
-    return key.replace(/^\/+/, '');
+    const key = extractObjectKeyFromValue(url, {
+      publicBaseUrl: this.publicBaseUrl,
+      bucket: this.bucket,
+    });
+    return key || null;
   }
 }

@@ -9,7 +9,7 @@
 - нет `DATABASE_URL` или пары `DB_HOST` + надёжный `DB_PASSWORD`;
 - не заданы `CORS_ALLOWED_ORIGINS` (только `https://`), `GOOGLE_OAUTH_CLIENT_ID`, настройки Telegram-бота;
 - Redis включён, но нет `REDIS_PASSWORD` / `THROTTLER_STORAGE=redis`;
-- `STORAGE_DRIVER` не `yandex` или не заполнены ключи Object Storage.
+- `STORAGE_DRIVER` не `s3` или не заполнены `S3_*` (endpoint и public URL только `https://`).
 
 Полный чеклист деплоя: [deploy.md](./deploy.md).
 

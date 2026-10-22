@@ -17,10 +17,12 @@ describe('validateEnv', () => {
     TELEGRAM_WEBHOOK_SECRET: productionSecret,
     REDIS_PASSWORD: productionSecret,
     THROTTLER_STORAGE: 'redis',
-    STORAGE_DRIVER: 'yandex',
-    YANDEX_STORAGE_BUCKET: 'svels-media',
-    YANDEX_STORAGE_ACCESS_KEY_ID: 'access-key',
-    YANDEX_STORAGE_SECRET_ACCESS_KEY: 'secret-key',
+    STORAGE_DRIVER: 's3',
+    S3_ENDPOINT: 'https://s3.hoster.by',
+    S3_BUCKET: 'svels-media',
+    S3_ACCESS_KEY_ID: 'access-key',
+    S3_SECRET_ACCESS_KEY: 'secret-key',
+    S3_PUBLIC_BASE_URL: 'https://img.example.com',
   };
 
   it('passes in development with defaults', () => {
@@ -158,13 +160,31 @@ describe('validateEnv', () => {
     ).toThrow(/TELEGRAM_BOT_TOKEN is required in production/);
   });
 
-  it('fails in production when storage is not yandex', () => {
+  it('fails in production when storage driver is yandex', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        STORAGE_DRIVER: 'yandex',
+      }),
+    ).toThrow(/STORAGE_DRIVER=yandex is no longer supported/);
+  });
+
+  it('fails in production when storage is not s3', () => {
     expect(() =>
       validateEnv({
         ...productionBase,
         STORAGE_DRIVER: 'local',
       }),
-    ).toThrow(/STORAGE_DRIVER must be yandex in production/);
+    ).toThrow(/STORAGE_DRIVER must be s3 in production/);
+  });
+
+  it('fails in production when S3 endpoint is not https', () => {
+    expect(() =>
+      validateEnv({
+        ...productionBase,
+        S3_ENDPOINT: 'http://s3.hoster.by',
+      }),
+    ).toThrow(/S3_ENDPOINT must use https:\/\//);
   });
 
   it('passes in production with required secrets', () => {

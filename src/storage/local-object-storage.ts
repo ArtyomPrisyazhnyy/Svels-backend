@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
+import {
+  extractObjectKeyFromValue,
+  normalizeStorageKey,
+} from './storage-object-key.util';
 import type { ObjectStorage, StoredObject } from './storage.types';
 
 @Injectable()
@@ -42,27 +46,11 @@ export class LocalObjectStorage implements ObjectStorage {
   }
 
   resolveKeyFromUrl(url: string): string | null {
-    if (!url) {
-      return null;
-    }
-
-    if (url.startsWith('/uploads/')) {
-      return this.normalizeKey(url.slice('/uploads/'.length));
-    }
-
-    try {
-      const { pathname } = new URL(url);
-      if (pathname.startsWith('/uploads/')) {
-        return this.normalizeKey(pathname.slice('/uploads/'.length));
-      }
-    } catch {
-      // ignore
-    }
-
-    return null;
+    const key = extractObjectKeyFromValue(url);
+    return key || null;
   }
 
   private normalizeKey(key: string): string {
-    return key.replace(/^\/+/, '').replace(/^uploads\//, '');
+    return normalizeStorageKey(key);
   }
 }

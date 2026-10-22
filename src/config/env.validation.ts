@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { IsEnum, IsOptional, IsString, validateSync } from 'class-validator';
+import { isHttpsUrl } from '../storage/storage-object-key.util';
 
 const DEFAULT_JWT_SECRET = 'change-me-in-production';
 const DEFAULT_REVALIDATE_SECRET = 'dev-revalidate-secret';
@@ -56,15 +57,31 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  YANDEX_STORAGE_BUCKET?: string;
+  S3_ENDPOINT?: string;
 
   @IsOptional()
   @IsString()
-  YANDEX_STORAGE_ACCESS_KEY_ID?: string;
+  S3_REGION?: string;
 
   @IsOptional()
   @IsString()
-  YANDEX_STORAGE_SECRET_ACCESS_KEY?: string;
+  S3_BUCKET?: string;
+
+  @IsOptional()
+  @IsString()
+  S3_ACCESS_KEY_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  S3_SECRET_ACCESS_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  S3_FORCE_PATH_STYLE?: string;
+
+  @IsOptional()
+  @IsString()
+  S3_PUBLIC_BASE_URL?: string;
 
   @IsOptional()
   @IsString()
@@ -196,19 +213,29 @@ function assertProductionRedis(env: EnvironmentVariables): void {
 
 function assertProductionStorage(env: EnvironmentVariables): void {
   const driver = env.STORAGE_DRIVER?.trim() ?? 'local';
-  if (driver !== 'yandex') {
-    throw new Error('STORAGE_DRIVER must be yandex in production');
+
+  if (driver === 'yandex') {
+    throw new Error(
+      'STORAGE_DRIVER=yandex is no longer supported; use STORAGE_DRIVER=s3 with S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_PUBLIC_BASE_URL',
+    );
   }
 
-  assertProductionNonEmpty('YANDEX_STORAGE_BUCKET', env.YANDEX_STORAGE_BUCKET);
-  assertProductionNonEmpty(
-    'YANDEX_STORAGE_ACCESS_KEY_ID',
-    env.YANDEX_STORAGE_ACCESS_KEY_ID,
-  );
-  assertProductionNonEmpty(
-    'YANDEX_STORAGE_SECRET_ACCESS_KEY',
-    env.YANDEX_STORAGE_SECRET_ACCESS_KEY,
-  );
+  if (driver !== 's3') {
+    throw new Error('STORAGE_DRIVER must be s3 in production');
+  }
+
+  assertProductionNonEmpty('S3_ENDPOINT', env.S3_ENDPOINT);
+  if (!isHttpsUrl(env.S3_ENDPOINT ?? '')) {
+    throw new Error('S3_ENDPOINT must use https:// in production');
+  }
+
+  assertProductionNonEmpty('S3_BUCKET', env.S3_BUCKET);
+  assertProductionNonEmpty('S3_ACCESS_KEY_ID', env.S3_ACCESS_KEY_ID);
+  assertProductionNonEmpty('S3_SECRET_ACCESS_KEY', env.S3_SECRET_ACCESS_KEY);
+  assertProductionNonEmpty('S3_PUBLIC_BASE_URL', env.S3_PUBLIC_BASE_URL);
+  if (!isHttpsUrl(env.S3_PUBLIC_BASE_URL ?? '')) {
+    throw new Error('S3_PUBLIC_BASE_URL must use https:// in production');
+  }
 }
 
 function assertProductionTelegram(env: EnvironmentVariables): void {

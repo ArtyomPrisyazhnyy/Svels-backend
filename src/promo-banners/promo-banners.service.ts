@@ -14,6 +14,7 @@ import {
 } from '../common/enums/promo-banner.enum';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
+import { PublicMediaUrlService } from '../storage/public-media-url.service';
 import {
   CreatePromoBannerDto,
   PromoBannerResponseDto,
@@ -28,6 +29,7 @@ export class PromoBannersService {
     private readonly bannerRepository: Repository<PromoBanner>,
     private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
+    private readonly publicMediaUrlService: PublicMediaUrlService,
   ) {}
 
   async getByRestaurant(
@@ -66,8 +68,8 @@ export class PromoBannersService {
       restaurantId,
       type: dto.type,
       title: this.normalizeOptionalText(dto.title),
-      imageUrl: dto.imageUrl.trim(),
-      imageWebpUrl: this.normalizeOptionalUrl(dto.imageWebpUrl),
+      imageUrl: this.normalizeImageKey(dto.imageUrl),
+      imageWebpUrl: this.normalizeOptionalImageKey(dto.imageWebpUrl),
       linkUrl: this.normalizeLinkUrl(dto.linkUrl),
       isActive: dto.isActive ?? true,
       sortOrder: dto.sortOrder ?? 0,
@@ -99,11 +101,11 @@ export class PromoBannersService {
     }
 
     if (dto.imageUrl !== undefined) {
-      banner.imageUrl = dto.imageUrl.trim();
+      banner.imageUrl = this.normalizeImageKey(dto.imageUrl);
     }
 
     if (dto.imageWebpUrl !== undefined) {
-      banner.imageWebpUrl = this.normalizeOptionalUrl(dto.imageWebpUrl);
+      banner.imageWebpUrl = this.normalizeOptionalImageKey(dto.imageWebpUrl);
     }
 
     if (dto.linkUrl !== undefined) {
@@ -201,15 +203,6 @@ export class PromoBannersService {
     return trimmed ? sanitizeText(trimmed) : null;
   }
 
-  private normalizeOptionalUrl(value?: string | null): string | null {
-    if (value === null || value === undefined) {
-      return null;
-    }
-
-    const trimmed = value.trim();
-    return trimmed || null;
-  }
-
   private normalizeLinkUrl(value?: string | null): string | null {
     if (value === null || value === undefined) {
       return null;
@@ -236,14 +229,37 @@ export class PromoBannersService {
     }
   }
 
+  private normalizeImageKey(value: string): string {
+    const key = this.publicMediaUrlService.toStorageKey(value);
+    if (!key) {
+      throw new BadRequestException('Некорректный путь изображения баннера');
+    }
+    return key;
+  }
+
+  private normalizeOptionalImageKey(
+    value: string | null | undefined,
+  ): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return this.normalizeImageKey(trimmed);
+  }
+
   private toResponse(banner: PromoBanner): PromoBannerResponseDto {
     return {
       id: banner.id,
       restaurantId: banner.restaurantId,
       type: banner.type,
       title: banner.title,
-      imageUrl: banner.imageUrl,
-      imageWebpUrl: banner.imageWebpUrl,
+      imageUrl:
+        this.publicMediaUrlService.toPublicUrl(banner.imageUrl) ??
+        banner.imageUrl,
+      imageWebpUrl: this.publicMediaUrlService.toPublicUrl(banner.imageWebpUrl),
       linkUrl: banner.linkUrl,
       isActive: banner.isActive,
       sortOrder: banner.sortOrder,

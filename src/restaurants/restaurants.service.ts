@@ -34,6 +34,7 @@ import { PendingRegistrationDto } from '../shared/dto/pending-registration.dto';
 import { USERS_SERVICE } from '../common/constants/injection-tokens';
 import type { IUsersService } from '../users/interfaces/users-service.interface';
 import { PasswordSetService } from '../auth/password-set.service';
+import { PublicMediaUrlService } from '../storage/public-media-url.service';
 import {
   AdminCreateRestaurantDto,
   AdminCreateRestaurantResponseDto,
@@ -55,6 +56,7 @@ export class RestaurantsService {
     private readonly usersService: IUsersService,
     private readonly passwordSetService: PasswordSetService,
     private readonly dataSource: DataSource,
+    private readonly publicMediaUrlService: PublicMediaUrlService,
   ) {}
 
   async register(
@@ -192,13 +194,19 @@ export class RestaurantsService {
     }
 
     if (dto.logoUrl !== undefined) {
-      restaurant.logoUrl = dto.logoUrl;
+      restaurant.logoUrl =
+        dto.logoUrl === null
+          ? null
+          : this.publicMediaUrlService.toStorageKey(dto.logoUrl) || null;
       if (dto.logoUrl === null) {
         restaurant.logoWebpUrl = null;
       }
     }
     if (dto.logoWebpUrl !== undefined) {
-      restaurant.logoWebpUrl = dto.logoWebpUrl;
+      restaurant.logoWebpUrl =
+        dto.logoWebpUrl === null
+          ? null
+          : this.publicMediaUrlService.toStorageKey(dto.logoWebpUrl) || null;
     }
 
     if (dto.unp !== undefined) {
@@ -491,8 +499,10 @@ export class RestaurantsService {
       status: restaurant.status,
       ownerId: restaurant.ownerId,
       customDomain: restaurant.customDomain,
-      logoUrl: restaurant.logoUrl,
-      logoWebpUrl: restaurant.logoWebpUrl,
+      logoUrl: this.publicMediaUrlService.toPublicUrl(restaurant.logoUrl),
+      logoWebpUrl: this.publicMediaUrlService.toPublicUrl(
+        restaurant.logoWebpUrl,
+      ),
       createdAt: restaurant.createdAt,
     };
   }

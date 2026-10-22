@@ -61,7 +61,7 @@ docker compose -f docker-compose.prod.yml run --rm migrate npm run migration:rev
 
 ## Восстановление из бэкапа
 
-1. Скачайте архив из Object Storage (`deploy/backup/pg-backup.sh` кладёт в `postgres/<DB_NAME>/`).
+1. Скачайте архив из S3-бакета бэкапов (`deploy/backup.sh` кладёт в `postgres/<DB_NAME>/`).
 2. Остановите API/worker или переведите приложение в maintenance.
 3. Восстановите:
    ```bash
@@ -69,7 +69,7 @@ docker compose -f docker-compose.prod.yml run --rm migrate npm run migration:rev
    ```
 4. Поднимите сервисы снова.
 
-Скрипт бэкапа: `deploy/backup/pg-backup.sh` (нужны `pg_dump`, `gzip`, AWS CLI с endpoint Yandex). Ротация — **14 дней** (`BACKUP_RETENTION_DAYS`).
+Скрипт бэкапа: `deploy/backup.sh` (нужны `pg_dump`, `gzip`, AWS CLI и `BACKUP_S3_*`). Ротация — **14 дней** (`BACKUP_RETENTION_DAYS`). Подробнее — `docs/deploy.md`.
 
 ## Проверка конфигурации
 
