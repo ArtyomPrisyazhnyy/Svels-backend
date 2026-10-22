@@ -10,8 +10,6 @@ export interface ImageProcessJobPayload {
 }
 
 export interface ImageProcessJobResult {
-  fallbackUrl: string;
-  webpUrl: string;
   fallbackKey: string;
   webpKey: string;
 }

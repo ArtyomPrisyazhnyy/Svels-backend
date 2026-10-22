@@ -1,4 +1,5 @@
 import './instrument';
+import { ConsoleLogger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
@@ -15,12 +16,24 @@ import { CorsOriginService } from './common/cors/cors-origin.service';
 import { resolveTrustProxy } from './config/trust-proxy';
 
 async function bootstrap() {
+  const isProduction = process.env.NODE_ENV === 'production';
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
       trustProxy: resolveTrustProxy(),
     }),
+    isProduction
+      ? {
+          logger: new ConsoleLogger({
+            json: true,
+            compact: true,
+          }),
+        }
+      : undefined,
   );
+
+  app.enableShutdownHooks();
 
   const corsOriginService = app.get(CorsOriginService);
 

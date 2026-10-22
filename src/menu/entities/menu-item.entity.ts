@@ -56,11 +56,11 @@ export class MenuItem {
   @Column({ default: true })
   isAvailable: boolean;
 
-  /** Fallback (JPEG/PNG) для браузеров без WebP. */
+  /** Object key fallback (JPEG/PNG); публичный URL собирается при отдаче API. */
   @Column()
   imageUrl: string;
 
-  /** WebP-вариант обложки; null — показывать только imageUrl. */
+  /** Object key WebP; null — только fallback. */
   @Column({ type: 'varchar', nullable: true })
   imageWebpUrl: string | null;
 

@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Queue, QueueEvents } from 'bullmq';
 import { generateUuidV7 } from '../common/utils/uuid.util';
+import { PublicMediaUrlService } from '../storage/public-media-url.service';
 import { ImagePipelineService } from './image-pipeline.service';
 import {
   IMAGE_PROCESSING_QUEUE,
@@ -22,6 +23,8 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export interface UploadedImageUrls {
   url: string;
   webpUrl: string;
+  fallbackKey: string;
+  webpKey: string;
 }
 
 @Injectable()
@@ -31,6 +34,7 @@ export class MediaUploadService {
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly publicMediaUrlService: PublicMediaUrlService,
     private readonly pipelineService: ImagePipelineService,
     @Optional()
     @InjectQueue(IMAGE_PROCESSING_QUEUE)
@@ -99,7 +103,7 @@ export class MediaUploadService {
         keyPrefix,
         mimeType,
       });
-      return { url: result.fallbackUrl, webpUrl: result.webpUrl };
+      return this.keysToUploadedUrls(result);
     }
 
     return this.enqueueAndWait({ buffer, keyPrefix, mimeType });
@@ -138,7 +142,7 @@ export class MediaUploadService {
     try {
       const events = this.getQueueEvents();
       const result = await job.waitUntilFinished(events, timeoutMs);
-      return { url: result.fallbackUrl, webpUrl: result.webpUrl };
+      return this.keysToUploadedUrls(result);
     } catch (error) {
       this.logger.error(
         `Image job ${job.id} failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -147,6 +151,22 @@ export class MediaUploadService {
         'Не удалось обработать изображение. Убедитесь, что запущен image worker (npm run start:worker).',
       );
     }
+  }
+
+  private keysToUploadedUrls(result: ImageProcessJobResult): UploadedImageUrls {
+    const url = this.publicMediaUrlService.toPublicUrl(result.fallbackKey);
+    const webpUrl = this.publicMediaUrlService.toPublicUrl(result.webpKey);
+    if (!url || !webpUrl) {
+      throw new ServiceUnavailableException(
+        'Не удалось сформировать URL загруженного изображения',
+      );
+    }
+    return {
+      url,
+      webpUrl,
+      fallbackKey: result.fallbackKey,
+      webpKey: result.webpKey,
+    };
   }
 
   private getQueueEvents(): QueueEvents {

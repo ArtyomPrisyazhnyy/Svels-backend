@@ -29,10 +29,31 @@ describe('PromoBannersService', () => {
     revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
   };
 
+  const publicMediaUrlService = {
+    toStorageKey: (value: string) => {
+      try {
+        const url = new URL(value);
+        return url.pathname.replace(/^\/+/, '');
+      } catch {
+        return value.replace(/^\/+/, '');
+      }
+    },
+    toPublicUrl: (value: string | null | undefined) => {
+      if (!value) {
+        return null;
+      }
+      if (value.startsWith('http') || value.startsWith('/uploads/')) {
+        return value;
+      }
+      return `/uploads/${value}`;
+    },
+  };
+
   const service = new PromoBannersService(
     repository as never,
     cacheService as never,
     nextRevalidationService as never,
+    publicMediaUrlService as never,
   );
 
   beforeEach(() => {
@@ -46,7 +67,7 @@ describe('PromoBannersService', () => {
       restaurantId,
       type: PromoBannerType.STRIP,
       title: null,
-      imageUrl: 'https://cdn.example/banner.jpg',
+      imageUrl: 'banners/banner.jpg',
       imageWebpUrl: null,
       linkUrl: null,
       isActive: true,
@@ -62,7 +83,7 @@ describe('PromoBannersService', () => {
 
     await service.create(restaurantId, {
       type: PromoBannerType.STRIP,
-      imageUrl: 'https://cdn.example/banner.jpg',
+      imageUrl: 'banners/banner.jpg',
       displayFrequency: PromoBannerDisplayFrequency.ONCE,
       aspectRatio: PromoBannerAspectRatio.RATIO_16_9,
     });
@@ -84,7 +105,7 @@ describe('PromoBannersService', () => {
     await expect(
       service.create(restaurantId, {
         type: PromoBannerType.MODAL,
-        imageUrl: 'https://cdn.example/banner.jpg',
+        imageUrl: 'banners/banner.jpg',
         linkUrl: 'not-a-url',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -105,7 +126,7 @@ describe('PromoBannersService', () => {
         restaurantId,
         type: PromoBannerType.MODAL,
         title: 'Sale',
-        imageUrl: 'https://cdn.example/a.jpg',
+        imageUrl: 'banners/a.jpg',
         imageWebpUrl: null,
         linkUrl: null,
         isActive: true,
@@ -119,7 +140,7 @@ describe('PromoBannersService', () => {
         restaurantId,
         type: PromoBannerType.STRIP,
         title: null,
-        imageUrl: 'https://cdn.example/b.jpg',
+        imageUrl: 'banners/b.jpg',
         imageWebpUrl: null,
         linkUrl: null,
         isActive: false,

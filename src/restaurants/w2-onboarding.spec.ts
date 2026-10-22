@@ -210,6 +210,11 @@ describe('W2-B-ONB onboarding', () => {
       }),
     };
 
+    const publicMediaUrlService = {
+      toPublicUrl: (value: string | null | undefined) => value ?? null,
+      toStorageKey: (value: string) => value,
+    };
+
     const service = new RestaurantsService(
       restaurantRepository as never,
       registrationRepository as never,
@@ -219,6 +224,7 @@ describe('W2-B-ONB onboarding', () => {
       usersService as never,
       passwordSetService as never,
       dataSource as never,
+      publicMediaUrlService as never,
     );
 
     beforeEach(() => {
