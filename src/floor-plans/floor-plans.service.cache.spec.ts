@@ -1,9 +1,10 @@
 import { FloorPlansService } from './floor-plans.service';
+import type { FloorPlan } from './entities/floor-plan.entity';
 
 describe('FloorPlansService cache invalidation', () => {
   const floorPlanRepository = {
     find: jest.fn(),
-    create: jest.fn((value) => value),
+    create: jest.fn((value: Partial<FloorPlan>) => value),
     save: jest.fn(),
     count: jest.fn().mockResolvedValue(0),
   };

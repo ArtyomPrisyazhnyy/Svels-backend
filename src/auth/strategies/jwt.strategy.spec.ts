@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { CacheKeys } from '../../cache/cache-keys';
+import type { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { JwtStrategy } from './jwt.strategy';
 
 describe('JwtStrategy', () => {
@@ -62,11 +63,11 @@ describe('JwtStrategy', () => {
       user,
       120,
     );
-    const cachedPayload = cacheService.set.mock.calls[0][1] as Record<
-      string,
-      unknown
-    >;
-    expect(cachedPayload).not.toHaveProperty('passwordHash');
+    const setMock = jest.mocked(cacheService.set);
+    const firstCall = setMock.mock.calls[0] as
+      | [string, AuthenticatedUser, number]
+      | undefined;
+    expect(firstCall?.[1]).not.toHaveProperty('passwordHash');
   });
 
   it('throws when user no longer exists', async () => {

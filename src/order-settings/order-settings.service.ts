@@ -19,11 +19,19 @@ export class OrderSettingsService {
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  /** Внутренние модули (pre-orders): те же данные, что публичный GET, без findOrCreate. */
+  /**
+   * Внутренние модули (pre-orders): всегда из БД, без cache-aside —
+   * иначе устаревший ordersPaused после паузы или прямого SQL в e2e.
+   */
   async getByRestaurant(
     restaurantId: string,
   ): Promise<OrderSettingsResponseDto> {
-    return this.getPublicByRestaurant(restaurantId);
+    const settings = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
+    return settings
+      ? this.toResponse(settings)
+      : this.defaultResponse(restaurantId);
   }
 
   /** Публичное чтение: без записи в БД, с кэшем. */

@@ -35,7 +35,7 @@ describe('RestaurantLocationsService', () => {
   const service = new RestaurantLocationsService(
     locationRepository as never,
     restaurantRepository as never,
-    restaurantsService as never,
+    restaurantsService,
     cacheService as never,
     nextRevalidationService as never,
   );

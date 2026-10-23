@@ -1,7 +1,4 @@
-import {
-  CacheKeys,
-  restaurantScopedCacheKeys,
-} from './cache-keys';
+import { CacheKeys, restaurantScopedCacheKeys } from './cache-keys';
 
 describe('CacheKeys', () => {
   const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';

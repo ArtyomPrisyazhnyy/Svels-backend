@@ -68,14 +68,14 @@ describe('MenuService categories', () => {
       sortOrder: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as MenuCategory);
+    });
 
     await service.createCategory('rest-id', { name: 'Starters' });
 
     expect(cacheService.del).toHaveBeenCalledWith('restaurant:rest-id:menu');
-    expect(nextRevalidationService.revalidateRestaurantPublicPage).toHaveBeenCalledWith(
-      'rest-id',
-    );
+    expect(
+      nextRevalidationService.revalidateRestaurantPublicPage,
+    ).toHaveBeenCalledWith('rest-id');
   });
 
   it('orders categories by sortOrder, createdAt, id when loading menu', async () => {

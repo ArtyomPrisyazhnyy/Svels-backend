@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
 import { CacheKeys } from '../cache/cache-keys';
+import { Restaurant } from './entities/restaurant.entity';
 import { RestaurantsService } from './restaurants.service';
 
 describe('RestaurantsService cache behaviour', () => {
@@ -57,9 +58,9 @@ describe('RestaurantsService cache behaviour', () => {
     cacheService.getWithSentinel.mockResolvedValue({ status: 'miss' });
     restaurantRepository.findOne.mockResolvedValue(null);
 
-    await expect(service.resolveByDomain('cafe.example.com')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.resolveByDomain('cafe.example.com'),
+    ).rejects.toBeInstanceOf(NotFoundException);
     expect(cacheService.setNullSentinel).toHaveBeenCalledWith(
       CacheKeys.restaurantByDomain('cafe.example.com'),
       60,
@@ -87,7 +88,7 @@ describe('RestaurantsService cache behaviour', () => {
       createdAt: new Date(),
     };
     restaurantRepository.findOne.mockResolvedValue(entity);
-    restaurantRepository.save.mockImplementation(async (row) => row);
+    restaurantRepository.save.mockImplementation((row: Restaurant) => row);
 
     await service.update(restaurantId, { name: 'New Name' });
 
@@ -96,9 +97,9 @@ describe('RestaurantsService cache behaviour', () => {
       CacheKeys.restaurantPublic(restaurantId),
       CacheKeys.restaurantByDomain('old.example.com'),
     ]);
-    expect(nextRevalidationService.revalidateRestaurantPublicPage).toHaveBeenCalledWith(
-      restaurantId,
-    );
+    expect(
+      nextRevalidationService.revalidateRestaurantPublicPage,
+    ).toHaveBeenCalledWith(restaurantId);
   });
 
   it('remove deletes all scoped restaurant keys', async () => {
@@ -110,8 +111,11 @@ describe('RestaurantsService cache behaviour', () => {
 
     await service.remove(restaurantId);
 
-    const delArg = cacheService.delMany.mock.calls[0][0] as string[];
-    expect(delArg).toContain(CacheKeys.menu(restaurantId));
-    expect(delArg).toContain(CacheKeys.restaurantByDomain('cafe.example.com'));
+    expect(cacheService.delMany).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        CacheKeys.menu(restaurantId),
+        CacheKeys.restaurantByDomain('cafe.example.com'),
+      ]),
+    );
   });
 });

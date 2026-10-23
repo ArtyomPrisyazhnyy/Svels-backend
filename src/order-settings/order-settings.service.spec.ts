@@ -27,6 +27,71 @@ describe('OrderSettingsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    cacheService.get.mockResolvedValue(null);
+  });
+
+  it('getByRestaurant reads from DB and bypasses cache', async () => {
+    cacheService.get.mockResolvedValue({
+      restaurantId: '019efb61-5d8e-7058-b838-6f2696cb4204',
+      ordersPaused: false,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      fulfillmentDelivery: false,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: false,
+      deliveryForSomeoneElse: false,
+      updatedAt: new Date(0),
+    });
+    repository.findOne.mockResolvedValue({
+      restaurantId: '019efb61-5d8e-7058-b838-6f2696cb4204',
+      ordersPaused: true,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      fulfillmentDelivery: false,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: false,
+      deliveryForSomeoneElse: false,
+      updatedAt: new Date(),
+    });
+
+    const result = await service.getByRestaurant(
+      '019efb61-5d8e-7058-b838-6f2696cb4204',
+    );
+
+    expect(result.ordersPaused).toBe(true);
+    expect(cacheService.get).not.toHaveBeenCalled();
+  });
+
+  it('invalidates order-settings cache after updatePause save', async () => {
+    const settings = {
+      restaurantId: '019efb61-5d8e-7058-b838-6f2696cb4204',
+      ordersPaused: false,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      fulfillmentDelivery: false,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: false,
+      deliveryForSomeoneElse: false,
+      updatedAt: new Date(),
+    } as RestaurantOrderSettings;
+    repository.findOne.mockResolvedValue(settings);
+    repository.save.mockImplementation((row: RestaurantOrderSettings) => {
+      row.ordersPaused = true;
+      return Promise.resolve(row);
+    });
+
+    await service.updatePause(settings.restaurantId, true);
+
+    expect(repository.save).toHaveBeenCalled();
+    expect(cacheService.del).toHaveBeenCalledWith(
+      'restaurant:019efb61-5d8e-7058-b838-6f2696cb4204:order-settings',
+    );
+    const saveOrder = repository.save.mock.invocationCallOrder[0];
+    const delOrder = cacheService.del.mock.invocationCallOrder[0];
+    expect(saveOrder).toBeLessThan(delOrder);
   });
 
   it('returns defaults on public read without findOrCreate', async () => {

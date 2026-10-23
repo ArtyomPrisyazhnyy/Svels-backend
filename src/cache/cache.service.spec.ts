@@ -139,10 +139,7 @@ describe('CacheService', () => {
     const del = jest.fn();
     redisMock.pipeline.mockReturnValue({ del, exec: jest.fn() });
 
-    await service.delMany([
-      CacheKeys.menu('r1'),
-      CacheKeys.schedules('r1'),
-    ]);
+    await service.delMany([CacheKeys.menu('r1'), CacheKeys.schedules('r1')]);
 
     expect(del).toHaveBeenCalledTimes(2);
   });

@@ -1,4 +1,5 @@
 import { BookingSettingsService } from './booking-settings.service';
+import type { RestaurantBookingSettings } from './entities/restaurant-booking-settings.entity';
 
 describe('BookingSettingsService cache', () => {
   const settingsRepository = {
@@ -30,7 +31,9 @@ describe('BookingSettingsService cache', () => {
       bookingEnabled: true,
       updatedAt: new Date(),
     });
-    settingsRepository.save.mockImplementation(async (row) => row);
+    settingsRepository.save.mockImplementation(
+      (row: RestaurantBookingSettings) => row,
+    );
   });
 
   it('invalidates booking and floor-plan caches after update', async () => {
