@@ -8,6 +8,8 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
+import { CacheKeys } from '../cache/cache-keys';
+import { CacheService } from '../cache/cache.service';
 import { PLATFORM_AUTH_ROLES } from '../common/auth/restaurant-role-permissions';
 import { AuthProvider } from '../common/enums/auth-provider.enum';
 import { UserRole } from '../common/enums/user-role.enum';
@@ -43,6 +45,7 @@ export class UsersService implements IUsersService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly cacheService: CacheService,
   ) {}
 
   async create(
@@ -115,6 +118,7 @@ export class UsersService implements IUsersService {
     user.restaurantId = restaurantId;
     user.role = UserRole.RESTAURANT_ADMIN;
     await manager.save(User, user);
+    await this.invalidateAuthCache(ownerId);
   }
 
   private buildRestaurantOwnerEntity(dto: CreateRestaurantOwnerDto): User {
@@ -140,6 +144,7 @@ export class UsersService implements IUsersService {
     user.restaurantId = restaurantId;
     user.role = UserRole.RESTAURANT_ADMIN;
     await this.userRepository.save(user);
+    await this.invalidateAuthCache(ownerId);
   }
 
   async findEmailsByUserIds(userIds: string[]): Promise<Map<string, string>> {
@@ -409,10 +414,15 @@ export class UsersService implements IUsersService {
     }
 
     await this.userRepository.delete(id);
+    await this.invalidateAuthCache(id);
     this.eventEmitter.emit(
       UserDeletedEvent.EVENT,
       new UserDeletedEvent(id, user.restaurantId),
     );
+  }
+
+  async invalidateAuthCache(userId: string): Promise<void> {
+    await this.cacheService.del(CacheKeys.userAuth(userId));
   }
 
   private toResponse(user: User): UserResponseDto {

@@ -17,7 +17,7 @@ export class OrderSettingsController {
 
   @Get()
   getSettings(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
-    return this.orderSettingsService.getByRestaurant(restaurantId);
+    return this.orderSettingsService.getPublicByRestaurant(restaurantId);
   }
 
   @Patch('pause')

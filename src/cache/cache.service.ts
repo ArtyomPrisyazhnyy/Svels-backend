@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { CACHE_NULL_SENTINEL } from './cache-keys';
+
+export type CacheLookupResult<T> =
+  | { status: 'miss' }
+  | { status: 'hit'; value: T | null };
 
 @Injectable()
 export class CacheService implements OnModuleInit, OnModuleDestroy {
@@ -178,16 +183,62 @@ export class CacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Удаление ключей по шаблону через SCAN (не блокирует Redis, в отличие от KEYS).
+   */
   async delByPattern(pattern: string): Promise<void> {
     if (!(await this.ensureUsable())) {
       return;
     }
 
     try {
-      const keys = await this.client!.keys(pattern);
-      if (keys.length > 0) {
-        await this.client!.del(...keys);
+      let cursor = '0';
+      do {
+        const [nextCursor, keys] = await this.client!.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          100,
+        );
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          await this.client!.del(...keys);
+        }
+      } while (cursor !== '0');
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+    }
+  }
+
+  /** Различает отсутствие ключа и закэшированный null (negative cache). */
+  async getWithSentinel<T>(key: string): Promise<CacheLookupResult<T>> {
+    if (!(await this.ensureUsable())) {
+      return { status: 'miss' };
+    }
+
+    try {
+      const raw = await this.client!.get(key);
+      if (raw === null) {
+        return { status: 'miss' };
       }
+      if (raw === CACHE_NULL_SENTINEL) {
+        return { status: 'hit', value: null };
+      }
+      return { status: 'hit', value: JSON.parse(raw) as T };
+    } catch (error) {
+      this.markDegraded(error instanceof Error ? error : undefined);
+      return { status: 'miss' };
+    }
+  }
+
+  async setNullSentinel(key: string, ttlSeconds: number): Promise<void> {
+    if (!(await this.ensureUsable())) {
+      return;
+    }
+
+    try {
+      await this.client!.set(key, CACHE_NULL_SENTINEL, 'EX', ttlSeconds);
     } catch (error) {
       this.markDegraded(error instanceof Error ? error : undefined);
     }

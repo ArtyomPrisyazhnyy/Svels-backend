@@ -21,6 +21,10 @@ services:
       - redis-server
       - --requirepass
       - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
     volumes:
       - redis_data:/data
     healthcheck:

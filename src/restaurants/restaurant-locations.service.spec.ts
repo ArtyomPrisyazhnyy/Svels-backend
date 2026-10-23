@@ -25,15 +25,20 @@ describe('RestaurantLocationsService', () => {
     revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
   };
 
+  const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';
+  const locationId = '019efb61-5d8e-7058-b838-6f2696cb4205';
+
+  const restaurantsService = {
+    findById: jest.fn().mockResolvedValue({ id: restaurantId }),
+  };
+
   const service = new RestaurantLocationsService(
     locationRepository as never,
     restaurantRepository as never,
+    restaurantsService,
     cacheService as never,
     nextRevalidationService as never,
   );
-
-  const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';
-  const locationId = '019efb61-5d8e-7058-b838-6f2696cb4205';
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -80,7 +85,9 @@ describe('RestaurantLocationsService', () => {
   });
 
   it('rejects create for unknown restaurant', async () => {
-    restaurantRepository.findOne.mockResolvedValue(null);
+    restaurantsService.findById.mockRejectedValue(
+      new NotFoundException('Ресторан не найден'),
+    );
 
     await expect(
       service.create(restaurantId, {

@@ -36,6 +36,10 @@
 
 Глобальный `@nestjs/throttler` с опциональным Redis-хранилищем (`THROTTLER_STORAGE=redis`). Отдельные лимиты на auth/OTP/analytics — см. `ThrottleLimits` и контроллеры.
 
+## Redis (production)
+
+В `deploy/docker-compose.prod.yml` для Redis заданы `maxmemory 256mb` и `maxmemory-policy noeviction`. Политика **noeviction** обязательна для BullMQ и OTP: при нехватке памяти Redis возвращает ошибку записи, а API продолжает работать с деградацией кэша (чтение из Postgres). Увеличивайте `maxmemory` при росте очередей и ключей throttler/OTP.
+
 ## Установка пароля
 
 Токен из ссылки помечается использованным атомарно (`usedAt` только если `NULL`). Повторное использование — **409** `SET_PASSWORD_TOKEN_USED`.
