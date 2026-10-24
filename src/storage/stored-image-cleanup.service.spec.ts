@@ -34,7 +34,9 @@ describe('StoredImageCleanupService', () => {
     expect(storageService.deleteObject).toHaveBeenCalledTimes(2);
     expect(storageService.deleteObject).toHaveBeenCalledWith('menu/old.jpg');
     expect(storageService.deleteObject).toHaveBeenCalledWith('menu/old.webp');
-    expect(storageService.deleteObject).not.toHaveBeenCalledWith('menu/new.jpg');
+    expect(storageService.deleteObject).not.toHaveBeenCalledWith(
+      'menu/new.jpg',
+    );
   });
 
   it('skips external urls', async () => {
@@ -45,7 +47,9 @@ describe('StoredImageCleanupService', () => {
 
   it('collectRestaurantImageUrls aggregates logo, menu and banners', async () => {
     dataSource.query
-      .mockResolvedValueOnce([{ logoUrl: '/uploads/logo.jpg', logoWebpUrl: null }])
+      .mockResolvedValueOnce([
+        { logoUrl: '/uploads/logo.jpg', logoWebpUrl: null },
+      ])
       .mockResolvedValueOnce([
         {
           imageUrl: '/uploads/item.jpg',
