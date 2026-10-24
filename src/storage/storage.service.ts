@@ -28,4 +28,8 @@ export class StorageService {
   resolveKeyFromUrl(url: string): string | null {
     return this.storage.resolveKeyFromUrl(url);
   }
+
+  listObjectKeys(): Promise<string[]> {
+    return this.storage.listObjectKeys();
+  }
 }

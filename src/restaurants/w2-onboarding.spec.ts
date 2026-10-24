@@ -210,6 +210,12 @@ describe('W2-B-ONB onboarding', () => {
       }),
     };
 
+    const storedImageCleanup = {
+      deleteByUrls: jest.fn().mockResolvedValue(undefined),
+      deleteReplacedUrls: jest.fn().mockResolvedValue(undefined),
+      collectRestaurantImageUrls: jest.fn().mockResolvedValue([]),
+    };
+
     const service = new RestaurantsService(
       restaurantRepository as never,
       registrationRepository as never,
@@ -219,6 +225,7 @@ describe('W2-B-ONB onboarding', () => {
       usersService as never,
       passwordSetService as never,
       dataSource as never,
+      storedImageCleanup as never,
     );
 
     beforeEach(() => {
@@ -272,10 +279,16 @@ describe('W2-B-ONB onboarding', () => {
     };
     const itemRepository = {
       count: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
+      delete: jest.fn().mockResolvedValue({ affected: 0 }),
     };
     const cacheService = { del: jest.fn().mockResolvedValue(undefined) };
     const nextRevalidationService = {
       revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
+    };
+    const storedImageCleanup = {
+      deleteByUrls: jest.fn().mockResolvedValue(undefined),
+      deleteReplacedUrls: jest.fn().mockResolvedValue(undefined),
     };
 
     const service = new MenuService(
@@ -283,26 +296,40 @@ describe('W2-B-ONB onboarding', () => {
       itemRepository as never,
       cacheService as never,
       nextRevalidationService as never,
+      storedImageCleanup as never,
     );
 
     beforeEach(() => {
       jest.clearAllMocks();
     });
 
-    it('returns CATEGORY_NOT_EMPTY when deleting non-empty category', async () => {
+    it('deletes category with items and schedules image cleanup', async () => {
       categoryRepository.findOne.mockResolvedValue({
         id: 'cat',
         restaurantId: 'rest',
         name: 'Main',
         sortOrder: 0,
       });
-      itemRepository.count.mockResolvedValue(2);
-
-      await expect(service.deleteCategory('rest', 'cat')).rejects.toMatchObject(
+      itemRepository.find.mockResolvedValue([
         {
-          response: { code: 'CATEGORY_NOT_EMPTY' },
+          imageUrl: '/uploads/menu/old.jpg',
+          imageWebpUrl: '/uploads/menu/old.webp',
+          galleryUrls: [],
+          galleryWebpUrls: [],
         },
-      );
+      ]);
+      categoryRepository.delete.mockResolvedValue({ affected: 1 });
+
+      await service.deleteCategory('rest', 'cat');
+
+      expect(itemRepository.delete).toHaveBeenCalledWith({
+        categoryId: 'cat',
+        restaurantId: 'rest',
+      });
+      expect(storedImageCleanup.deleteByUrls).toHaveBeenCalledWith([
+        '/uploads/menu/old.jpg',
+        '/uploads/menu/old.webp',
+      ]);
     });
 
     it('reorders categories by ids', async () => {

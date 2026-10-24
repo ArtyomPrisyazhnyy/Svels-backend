@@ -28,11 +28,16 @@ describe('PromoBannersService', () => {
   const nextRevalidationService = {
     revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
   };
+  const storedImageCleanup = {
+    deleteByUrls: jest.fn().mockResolvedValue(undefined),
+    deleteReplacedUrls: jest.fn().mockResolvedValue(undefined),
+  };
 
   const service = new PromoBannersService(
     repository as never,
     cacheService as never,
     nextRevalidationService as never,
+    storedImageCleanup as never,
   );
 
   beforeEach(() => {
@@ -88,6 +93,43 @@ describe('PromoBannersService', () => {
         linkUrl: 'not-a-url',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('cleans up replaced banner images after update', async () => {
+    const existing = {
+      id: bannerId,
+      restaurantId,
+      type: PromoBannerType.MODAL,
+      title: null,
+      imageUrl: '/uploads/banners/old.jpg',
+      imageWebpUrl: '/uploads/banners/old.webp',
+      linkUrl: null,
+      isActive: true,
+      sortOrder: 0,
+      displayFrequency: PromoBannerDisplayFrequency.EVERY_VISIT,
+      aspectRatio: PromoBannerAspectRatio.RATIO_4_1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as PromoBanner;
+
+    repository.findOne.mockResolvedValue(existing);
+    repository.save.mockImplementation((banner: PromoBanner) =>
+      Promise.resolve({
+        ...banner,
+        imageUrl: '/uploads/banners/new.jpg',
+        imageWebpUrl: '/uploads/banners/new.webp',
+      }),
+    );
+
+    await service.update(restaurantId, bannerId, {
+      imageUrl: '/uploads/banners/new.jpg',
+      imageWebpUrl: '/uploads/banners/new.webp',
+    });
+
+    expect(storedImageCleanup.deleteReplacedUrls).toHaveBeenCalledWith(
+      ['/uploads/banners/old.jpg', '/uploads/banners/old.webp'],
+      ['/uploads/banners/new.jpg', '/uploads/banners/new.webp'],
+    );
   });
 
   it('throws when updating missing banner', async () => {

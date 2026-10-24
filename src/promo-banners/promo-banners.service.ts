@@ -14,6 +14,8 @@ import {
 } from '../common/enums/promo-banner.enum';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
+import { StoredImageCleanupService } from '../storage/stored-image-cleanup.service';
+import { collectPromoBannerImageUrls } from '../storage/stored-image-urls.util';
 import {
   CreatePromoBannerDto,
   PromoBannerResponseDto,
@@ -28,6 +30,7 @@ export class PromoBannersService {
     private readonly bannerRepository: Repository<PromoBanner>,
     private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
+    private readonly storedImageCleanup: StoredImageCleanupService,
   ) {}
 
   async getByRestaurant(
@@ -89,6 +92,7 @@ export class PromoBannersService {
     dto: UpdatePromoBannerDto,
   ): Promise<PromoBannerResponseDto> {
     const banner = await this.findOwnedBanner(restaurantId, bannerId);
+    const imageUrlsBefore = collectPromoBannerImageUrls(banner);
 
     if (dto.type !== undefined) {
       banner.type = dto.type;
@@ -134,13 +138,19 @@ export class PromoBannersService {
     }
 
     const saved = await this.bannerRepository.save(banner);
+    await this.storedImageCleanup.deleteReplacedUrls(
+      imageUrlsBefore,
+      collectPromoBannerImageUrls(saved),
+    );
     await this.afterMutation(restaurantId);
     return this.toResponse(saved);
   }
 
   async remove(restaurantId: string, bannerId: string): Promise<void> {
     const banner = await this.findOwnedBanner(restaurantId, bannerId);
+    const imageUrls = collectPromoBannerImageUrls(banner);
     await this.bannerRepository.remove(banner);
+    await this.storedImageCleanup.deleteByUrls(imageUrls);
     await this.afterMutation(restaurantId);
   }
 
