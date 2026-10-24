@@ -4,6 +4,7 @@ import { SentryAlertDedupeService } from './sentry-alert-dedupe.service';
 import {
   extractSentryAlertContext,
   isActionableSentryWebhook,
+  shouldSkipIndividualSentryAlert,
 } from './sentry-alert-message.formatter';
 import { SentryTelegramNotifierService } from './sentry-telegram-notifier.service';
 
@@ -41,6 +42,10 @@ export class SentryWebhookService {
 
     const context = extractSentryAlertContext(payload);
     if (!context) {
+      return { handled: true, notified: false };
+    }
+
+    if (shouldSkipIndividualSentryAlert(context)) {
       return { handled: true, notified: false };
     }
 

@@ -47,6 +47,34 @@ describe('SentryWebhookService', () => {
     });
   });
 
+  it('does not notify for network-class (kind=network) issues', async () => {
+    const notify = jest.fn(() => Promise.resolve(true));
+    const service = createService(
+      {
+        'alerts.sentryWebhookSecret': 'secret',
+        'alerts.errorsTelegramBotToken': 'token',
+        'alerts.errorsTelegramChatId': 'chat',
+      },
+      notify,
+    );
+
+    await expect(
+      service.handlePayload({
+        action: 'created',
+        resource: 'issue',
+        data: {
+          issue: {
+            id: 'issue-network',
+            title: 'Fetch failed',
+            project: { slug: 'svels-mobile' },
+          },
+          event: { tags: { kind: 'network' } },
+        },
+      }),
+    ).resolves.toEqual({ handled: true, notified: false });
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it('notifies telegram when configured', async () => {
     const notify = jest.fn(() => Promise.resolve(true));
     const service = createService(

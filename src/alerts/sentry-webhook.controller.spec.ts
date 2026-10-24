@@ -30,6 +30,13 @@ describe('SentryWebhookController', () => {
     ).resolves.toEqual({ ok: true, skipped: true });
   });
 
+  it('returns 401 for missing signature', async () => {
+    const controller = createController(true);
+    await expect(
+      controller.handleWebhook({ rawBody }, undefined, {}),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('returns 401 for invalid signature', async () => {
     const controller = createController(true);
     await expect(

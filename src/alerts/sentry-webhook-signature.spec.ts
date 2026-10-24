@@ -18,6 +18,13 @@ describe('sentry webhook signature', () => {
     expect(verifySentryWebhookSignature(rawBody, signature, secret)).toBe(true);
   });
 
+  it('rejects missing signature header', () => {
+    expect(verifySentryWebhookSignature(rawBody, undefined, secret)).toBe(
+      false,
+    );
+    expect(verifySentryWebhookSignature(rawBody, '', secret)).toBe(false);
+  });
+
   it('rejects invalid signature', () => {
     expect(verifySentryWebhookSignature(rawBody, 'deadbeef', secret)).toBe(
       false,

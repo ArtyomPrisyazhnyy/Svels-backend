@@ -3,7 +3,16 @@ import {
   extractSentryAlertContext,
   isActionableSentryWebhook,
   resolveSentryAlertCategoryEmoji,
+  shouldSkipIndividualSentryAlert,
 } from './sentry-alert-message.formatter';
+
+describe('shouldSkipIndividualSentryAlert', () => {
+  it('skips network-class alerts', () => {
+    expect(shouldSkipIndividualSentryAlert({ kindTag: 'network' })).toBe(true);
+    expect(shouldSkipIndividualSentryAlert({ kindTag: 'server' })).toBe(false);
+    expect(shouldSkipIndividualSentryAlert({ kindTag: undefined })).toBe(false);
+  });
+});
 
 describe('resolveSentryAlertCategoryEmoji', () => {
   it('maps project slugs and kind=network tag', () => {

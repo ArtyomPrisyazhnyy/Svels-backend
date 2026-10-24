@@ -4,7 +4,7 @@ interface RequestWithRoute {
   method?: string;
   routeOptions?: { url?: string };
   route?: { path?: string };
-  params?: Record<string, string> | unknown;
+  params?: unknown;
   user?: { restaurantId?: string };
 }
 

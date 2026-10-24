@@ -18,6 +18,12 @@ export interface SentryAlertContext {
   issue: SentryAlertIssueView;
 }
 
+export function shouldSkipIndividualSentryAlert(
+  context: Pick<SentryAlertContext, 'kindTag'>,
+): boolean {
+  return context.kindTag === 'network';
+}
+
 export function resolveSentryAlertCategoryEmoji(
   projectSlug: string | undefined,
   kindTag: string | undefined,
