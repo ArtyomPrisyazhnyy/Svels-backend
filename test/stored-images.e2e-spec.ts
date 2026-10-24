@@ -95,6 +95,15 @@ describe('Stored image cleanup (e2e)', () => {
       .patch(`/restaurants/${restaurantId}/menu/items/${menuItemId}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
+        imageUrl: oldCover.url,
+        imageWebpUrl: oldWebp.url,
+      })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/restaurants/${restaurantId}/menu/items/${menuItemId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
         imageUrl: newCover.url,
         imageWebpUrl: newWebp.url,
       })
