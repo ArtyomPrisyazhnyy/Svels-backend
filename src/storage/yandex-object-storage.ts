@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -104,6 +105,30 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
     } catch (error) {
       this.logger.warn(`Failed to delete object ${key}: ${String(error)}`);
     }
+  }
+
+  async listObjectKeys(): Promise<string[]> {
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+
+    do {
+      const response = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      for (const object of response.Contents ?? []) {
+        if (object.Key) {
+          keys.push(this.normalizeKey(object.Key));
+        }
+      }
+      continuationToken = response.IsTruncated
+        ? response.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+
+    return keys;
   }
 
   resolveKeyFromUrl(url: string): string | null {

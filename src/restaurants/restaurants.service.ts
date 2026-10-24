@@ -34,6 +34,8 @@ import { PendingRegistrationDto } from '../shared/dto/pending-registration.dto';
 import { USERS_SERVICE } from '../common/constants/injection-tokens';
 import type { IUsersService } from '../users/interfaces/users-service.interface';
 import { PasswordSetService } from '../auth/password-set.service';
+import { StoredImageCleanupService } from '../storage/stored-image-cleanup.service';
+import { collectRestaurantLogoUrls } from '../storage/stored-image-urls.util';
 import {
   AdminCreateRestaurantDto,
   AdminCreateRestaurantResponseDto,
@@ -55,6 +57,7 @@ export class RestaurantsService {
     private readonly usersService: IUsersService,
     private readonly passwordSetService: PasswordSetService,
     private readonly dataSource: DataSource,
+    private readonly storedImageCleanup: StoredImageCleanupService,
   ) {}
 
   async register(
@@ -173,6 +176,8 @@ export class RestaurantsService {
       throw new NotFoundException('Ресторан не найден');
     }
 
+    const logoUrlsBefore = collectRestaurantLogoUrls(restaurant);
+
     if (dto.name) restaurant.name = sanitizeText(dto.name);
     if (dto.description !== undefined) {
       restaurant.description = dto.description
@@ -220,6 +225,10 @@ export class RestaurantsService {
     }
 
     const saved = await this.restaurantRepository.save(restaurant);
+    await this.storedImageCleanup.deleteReplacedUrls(
+      logoUrlsBefore,
+      collectRestaurantLogoUrls(saved),
+    );
     return this.toResponse(saved);
   }
 
@@ -231,6 +240,9 @@ export class RestaurantsService {
       throw new NotFoundException('Ресторан не найден');
     }
 
+    const imageUrls =
+      await this.storedImageCleanup.collectRestaurantImageUrls(id);
+
     if (restaurant.customDomain) {
       await this.cacheService.del(
         CacheKeys.restaurantByDomain(restaurant.customDomain),
@@ -238,6 +250,7 @@ export class RestaurantsService {
     }
 
     await this.restaurantRepository.delete({ id });
+    await this.storedImageCleanup.deleteByUrls(imageUrls);
   }
 
   async findRegistrationByApplicant(applicantId: string): Promise<{

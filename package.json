@@ -24,6 +24,7 @@
     "migration:mark-baseline": "node -r reflect-metadata -r ts-node/register scripts/mark-baseline-applied.ts",
     "create:super-admin": "tsx scripts/create-super-admin.ts",
     "migrate:images": "tsx scripts/migrate-images-to-storage.ts",
+    "find:orphan-images": "tsx scripts/find-orphan-images.ts",
     "delete:restaurant-guests": "tsx scripts/delete-restaurant-guests.ts",
     "docs:erd:build": "node scripts/erdia-build.mjs",
     "docs:erd:serve": "serve docs/erd -l 3333",

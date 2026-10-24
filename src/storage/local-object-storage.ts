@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
-import { dirname, join } from 'path';
+import { mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises';
+import { dirname, join, relative } from 'path';
 import type { ObjectStorage, StoredObject } from './storage.types';
 
 @Injectable()
@@ -39,6 +39,28 @@ export class LocalObjectStorage implements ObjectStorage {
         `Failed to delete local object ${key}: ${String(error)}`,
       );
     }
+  }
+
+  async listObjectKeys(): Promise<string[]> {
+    return this.walkKeys(this.root);
+  }
+
+  private async walkKeys(dir: string): Promise<string[]> {
+    const keys: string[] = [];
+    try {
+      const entries = await readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const absolute = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          keys.push(...(await this.walkKeys(absolute)));
+        } else if (entry.isFile()) {
+          keys.push(this.normalizeKey(relative(this.root, absolute)));
+        }
+      }
+    } catch {
+      // uploads root may not exist yet
+    }
+    return keys;
   }
 
   resolveKeyFromUrl(url: string): string | null {

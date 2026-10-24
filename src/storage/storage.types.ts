@@ -18,4 +18,7 @@ export interface ObjectStorage {
 
   /** Преобразует публичный URL или /uploads/... в storage key, если объект наш. */
   resolveKeyFromUrl(url: string): string | null;
+
+  /** Все ключи объектов в текущем storage (для аудита / orphan script). */
+  listObjectKeys(): Promise<string[]>;
 }

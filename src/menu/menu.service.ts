@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,6 +8,8 @@ import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
+import { StoredImageCleanupService } from '../storage/stored-image-cleanup.service';
+import { collectMenuItemImageUrls } from '../storage/stored-image-urls.util';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import {
   CreateMenuCategoryDto,
@@ -39,6 +40,7 @@ export class MenuService {
     private readonly itemRepository: Repository<MenuItem>,
     private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
+    private readonly storedImageCleanup: StoredImageCleanupService,
   ) {}
 
   async getMenuByRestaurant(restaurantId: string): Promise<MenuWithCategories> {
@@ -125,19 +127,17 @@ export class MenuService {
       throw new NotFoundException('Категория не найдена');
     }
 
-    const itemsCount = await this.itemRepository.count({
+    const items = await this.itemRepository.find({
       where: { categoryId, restaurantId },
     });
-    if (itemsCount > 0) {
-      throw new ConflictException({
-        statusCode: 409,
-        message: 'Нельзя удалить категорию с позициями меню',
-        error: 'Conflict',
-        code: 'CATEGORY_NOT_EMPTY',
-      });
+    const imageUrls = items.flatMap((item) => collectMenuItemImageUrls(item));
+
+    if (items.length > 0) {
+      await this.itemRepository.delete({ categoryId, restaurantId });
     }
 
     await this.categoryRepository.delete({ id: categoryId, restaurantId });
+    await this.storedImageCleanup.deleteByUrls(imageUrls);
     await this.invalidateCache(restaurantId);
   }
 
@@ -217,6 +217,8 @@ export class MenuService {
       throw new NotFoundException('Позиция меню не найдена');
     }
 
+    const imageUrlsBefore = collectMenuItemImageUrls(item);
+
     if (dto.categoryId) {
       await this.ensureCategoryBelongsToRestaurant(
         restaurantId,
@@ -259,18 +261,25 @@ export class MenuService {
     }
 
     const saved = await this.itemRepository.save(item);
+    await this.storedImageCleanup.deleteReplacedUrls(
+      imageUrlsBefore,
+      collectMenuItemImageUrls(saved),
+    );
     await this.invalidateCache(restaurantId);
     return saved;
   }
 
   async deleteItem(restaurantId: string, itemId: string): Promise<void> {
-    const result = await this.itemRepository.delete({
-      id: itemId,
-      restaurantId,
+    const item = await this.itemRepository.findOne({
+      where: { id: itemId, restaurantId },
     });
-    if (!result.affected) {
+    if (!item) {
       throw new NotFoundException('Позиция меню не найдена');
     }
+
+    const imageUrls = collectMenuItemImageUrls(item);
+    await this.itemRepository.delete({ id: itemId, restaurantId });
+    await this.storedImageCleanup.deleteByUrls(imageUrls);
     await this.invalidateCache(restaurantId);
   }
 

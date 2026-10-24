@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LocalObjectStorage } from './local-object-storage';
 import { OBJECT_STORAGE } from './storage.constants';
+import { StoredImageCleanupService } from './stored-image-cleanup.service';
 import { StorageService } from './storage.service';
 import { YandexObjectStorage } from './yandex-object-storage';
 
@@ -26,7 +27,8 @@ import { YandexObjectStorage } from './yandex-object-storage';
       },
     },
     StorageService,
+    StoredImageCleanupService,
   ],
-  exports: [StorageService],
+  exports: [StorageService, StoredImageCleanupService],
 })
 export class StorageModule {}
