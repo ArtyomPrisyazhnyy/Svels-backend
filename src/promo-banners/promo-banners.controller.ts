@@ -34,6 +34,8 @@ export class PromoBannersController {
 
   /** Все баннеры (админка). */
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard, RestaurantAccessGuard)
+  @StaffRoles(RestaurantPermission.MANAGE_MARKETING)
   getBanners(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
     return this.promoBannersService.getByRestaurant(restaurantId);
   }
