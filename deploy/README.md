@@ -2,6 +2,8 @@
 
 Стек: **Postgres 16**, **Redis 7** (с паролем), **API** + **worker** (один образ `svels-api`), **web** (`svels-client`), **Caddy** (TLS, on-demand для кастомных доменов).
 
+Object storage (S3 / миграция с Yandex): [storage.md](./storage.md).
+
 ## Первая установка на VM
 
 1. Установите Docker и Docker Compose v2.
