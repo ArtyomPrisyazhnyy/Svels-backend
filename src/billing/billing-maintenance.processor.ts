@@ -17,7 +17,9 @@ export class BillingMaintenanceProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<{ pastDueCount: number; suspendedCount: number }> {
+  async process(
+    job: Job,
+  ): Promise<{ pastDueCount: number; suspendedCount: number }> {
     if (job.name !== BILLING_MAINTENANCE_DAILY_JOB) {
       this.logger.warn(`Unknown billing job name: ${job.name}`);
       return { pastDueCount: 0, suspendedCount: 0 };

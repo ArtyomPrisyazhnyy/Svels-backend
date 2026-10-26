@@ -15,7 +15,6 @@ import {
 import { DEFAULT_TRIAL_DAYS } from './billing.constants';
 import { BillingPlanCode } from './enums/billing-plan-code.enum';
 import { SubscriptionStatus } from './enums/subscription-status.enum';
-import { BillingPlan } from './entities/billing-plan.entity';
 import { BillingSubscription } from './entities/billing-subscription.entity';
 import { BillingPlanService } from './billing-plan.service';
 import { ConfigService } from '@nestjs/config';
@@ -113,7 +112,9 @@ export class BillingSubscriptionService {
   ): Promise<BillingSubscription> {
     const subscription = await this.getByRestaurantIdOrThrow(restaurantId);
     if (trialEndsAt <= new Date()) {
-      throw new BadRequestException('Дата окончания пробного периода должна быть в будущем');
+      throw new BadRequestException(
+        'Дата окончания пробного периода должна быть в будущем',
+      );
     }
     subscription.trialEndsAt = trialEndsAt;
     if (
@@ -195,7 +196,7 @@ export class BillingSubscriptionService {
   }
 
   private toListItem(row: BillingSubscription): SubscriptionListItem {
-    const plan = row.plan as BillingPlan | undefined;
+    const plan = row.plan;
     if (!plan) {
       throw new Error('Plan relation missing for subscription list');
     }

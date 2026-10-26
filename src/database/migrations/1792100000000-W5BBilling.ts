@@ -74,8 +74,12 @@ export class W5BBilling1792100000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "public"."UQ_billing_invoices_year_number"`);
-    await queryRunner.query(`DROP INDEX "public"."IDX_billing_invoices_restaurant"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."UQ_billing_invoices_year_number"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_billing_invoices_restaurant"`,
+    );
     await queryRunner.query(`DROP TABLE "billing_invoices"`);
     await queryRunner.query(`DROP TABLE "billing_invoice_sequences"`);
     await queryRunner.query(
@@ -83,7 +87,9 @@ export class W5BBilling1792100000000 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TABLE "billing_subscriptions"`);
     await queryRunner.query(`DROP TABLE "billing_plans"`);
-    await queryRunner.query(`DROP TYPE "public"."billing_invoices_status_enum"`);
+    await queryRunner.query(
+      `DROP TYPE "public"."billing_invoices_status_enum"`,
+    );
     await queryRunner.query(
       `DROP TYPE "public"."billing_subscriptions_status_enum"`,
     );

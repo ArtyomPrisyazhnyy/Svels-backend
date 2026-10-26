@@ -37,24 +37,14 @@ describe('billing status machine', () => {
   it('suspends after grace period from pastDueSince', () => {
     const pastDueSince = new Date('2026-06-01T00:00:00.000Z');
     expect(
-      shouldMarkSuspended(
-        SubscriptionStatus.PAST_DUE,
-        pastDueSince,
-        7,
-        now,
-      ),
+      shouldMarkSuspended(SubscriptionStatus.PAST_DUE, pastDueSince, 7, now),
     ).toBe(true);
   });
 
   it('does not suspend before grace ends', () => {
     const pastDueSince = new Date('2026-06-10T00:00:00.000Z');
     expect(
-      shouldMarkSuspended(
-        SubscriptionStatus.PAST_DUE,
-        pastDueSince,
-        7,
-        now,
-      ),
+      shouldMarkSuspended(SubscriptionStatus.PAST_DUE, pastDueSince, 7, now),
     ).toBe(false);
   });
 

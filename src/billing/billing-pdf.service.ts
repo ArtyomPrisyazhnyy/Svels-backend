@@ -11,6 +11,7 @@ export interface InvoicePdfContext {
   plan: BillingPlan;
   restaurantName: string;
   restaurantUnp: string | null;
+  issuedAt: Date;
 }
 
 @Injectable()
@@ -59,7 +60,7 @@ export class BillingPdfService {
     doc.fontSize(16).text('Счёт на оплату', { align: 'center' });
     doc.moveDown();
     doc.fontSize(11);
-    doc.text(`№ ${number} от ${this.formatDate(context.invoice.createdAt)}`);
+    doc.text(`№ ${number} от ${this.formatDate(context.issuedAt)}`);
     doc.moveDown();
 
     doc.text('Получатель платежа:');
@@ -91,9 +92,11 @@ export class BillingPdfService {
     );
     doc.moveDown();
 
-    doc.fontSize(10).text(
-      'Оплата банковским переводом по реквизитам выше. Укажите номер счёта в назначении платежа.',
-    );
+    doc
+      .fontSize(10)
+      .text(
+        'Оплата банковским переводом по реквизитам выше. Укажите номер счёта в назначении платежа.',
+      );
 
     doc.end();
     return finished;

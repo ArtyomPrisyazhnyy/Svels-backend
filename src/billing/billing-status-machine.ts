@@ -27,7 +27,10 @@ export function shouldMarkPastDue(
   if (status === SubscriptionStatus.TRIAL) {
     return Boolean(trialEndsAt && trialEndsAt < now);
   }
-  if (status === SubscriptionStatus.ACTIVE || status === SubscriptionStatus.PAST_DUE) {
+  if (
+    status === SubscriptionStatus.ACTIVE ||
+    status === SubscriptionStatus.PAST_DUE
+  ) {
     return Boolean(paidUntil && paidUntil < now);
   }
   return false;

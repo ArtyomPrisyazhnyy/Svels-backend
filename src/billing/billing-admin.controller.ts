@@ -51,11 +51,14 @@ export class BillingAdminController {
 
   @Post('invoices/:invoiceId/mark-paid')
   @HttpCode(201)
-  async markInvoicePaid(@Param('invoiceId', ParseUuidV7Pipe) invoiceId: string) {
+  async markInvoicePaid(
+    @Param('invoiceId', ParseUuidV7Pipe) invoiceId: string,
+  ) {
     const result = await this.invoiceService.markInvoicePaid(invoiceId);
-    const subscription = await this.subscriptionService.getByRestaurantIdOrThrow(
-      result.subscriptionRestaurantId,
-    );
+    const subscription =
+      await this.subscriptionService.getByRestaurantIdOrThrow(
+        result.subscriptionRestaurantId,
+      );
     return {
       invoice: result.invoice,
       subscription: {

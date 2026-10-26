@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 import { BillingInvoiceNumberingService } from './billing-invoice-numbering.service';
 import { BillingInvoiceSequence } from './entities/billing-invoice-sequence.entity';
 
@@ -8,8 +8,8 @@ describe('BillingInvoiceNumberingService', () => {
   let service: BillingInvoiceNumberingService;
   const sequenceRepo = {
     findOne: jest.fn(),
-    create: jest.fn((row) => row),
-    save: jest.fn(async (row) => row),
+    create: jest.fn((row: BillingInvoiceSequence) => row),
+    save: jest.fn((row: BillingInvoiceSequence) => Promise.resolve(row)),
   };
 
   beforeEach(async () => {
@@ -32,13 +32,16 @@ describe('BillingInvoiceNumberingService', () => {
   });
 
   it('allocates sequential numbers per year in a transaction', async () => {
-    sequenceRepo.findOne.mockResolvedValue({ invoiceYear: 2026, lastNumber: 5 });
+    sequenceRepo.findOne.mockResolvedValue({
+      invoiceYear: 2026,
+      lastNumber: 5,
+    });
     const manager = {
       getRepository: () => sequenceRepo,
-    };
+    } as unknown as EntityManager;
 
     const allocation = await service.allocateNextNumber(
-      manager as unknown as DataSource,
+      manager,
       new Date('2026-04-10T00:00:00.000Z'),
     );
 

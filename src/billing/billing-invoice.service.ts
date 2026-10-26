@@ -86,11 +86,13 @@ export class BillingInvoiceService {
         pdfData: null,
       });
 
+      const issuedAt = new Date();
       const pdf = await this.pdfService.generateInvoicePdf({
         invoice,
         plan,
         restaurantName: restaurant.name,
         restaurantUnp: restaurant.unp,
+        issuedAt,
       });
       invoice.pdfData = pdf;
 
