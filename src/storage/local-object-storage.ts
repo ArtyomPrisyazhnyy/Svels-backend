@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import type { ObjectStorage, StoredObject } from './storage.types';
 
 @Injectable()
 export class LocalObjectStorage implements ObjectStorage {
   private readonly logger = new Logger(LocalObjectStorage.name);
-  private readonly root = join(process.cwd(), 'uploads');
+  private readonly root = resolve(join(process.cwd(), 'uploads'));
 
   async putObject(params: {
     key: string;
@@ -14,7 +14,7 @@ export class LocalObjectStorage implements ObjectStorage {
     contentType: string;
   }): Promise<StoredObject> {
     const normalizedKey = this.normalizeKey(params.key);
-    const absolutePath = join(this.root, normalizedKey);
+    const absolutePath = this.resolveAbsolutePath(normalizedKey);
     await mkdir(dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, params.body);
     return {
@@ -25,7 +25,7 @@ export class LocalObjectStorage implements ObjectStorage {
 
   async getObject(key: string): Promise<Buffer | null> {
     try {
-      return await readFile(join(this.root, this.normalizeKey(key)));
+      return await readFile(this.resolveAbsolutePath(this.normalizeKey(key)));
     } catch {
       return null;
     }
@@ -33,7 +33,7 @@ export class LocalObjectStorage implements ObjectStorage {
 
   async deleteObject(key: string): Promise<void> {
     try {
-      await unlink(join(this.root, this.normalizeKey(key)));
+      await unlink(this.resolveAbsolutePath(this.normalizeKey(key)));
     } catch (error) {
       this.logger.warn(
         `Failed to delete local object ${key}: ${String(error)}`,
@@ -63,6 +63,27 @@ export class LocalObjectStorage implements ObjectStorage {
   }
 
   private normalizeKey(key: string): string {
-    return key.replace(/^\/+/, '').replace(/^uploads\//, '');
+    const stripped = key.replace(/^\/+/, '').replace(/^uploads\//, '');
+    if (stripped.includes('..')) {
+      throw new Error(`Invalid storage key: ${key}`);
+    }
+    const segments = stripped
+      .split('/')
+      .filter((segment) => segment.length > 0);
+    if (segments.length === 0) {
+      throw new Error(`Invalid storage key: ${key}`);
+    }
+    return segments.join('/');
+  }
+
+  private resolveAbsolutePath(normalizedKey: string): string {
+    const absolutePath = resolve(this.root, normalizedKey);
+    if (
+      absolutePath !== this.root &&
+      !absolutePath.startsWith(`${this.root}/`)
+    ) {
+      throw new Error(`Invalid storage key path: ${normalizedKey}`);
+    }
+    return absolutePath;
   }
 }
