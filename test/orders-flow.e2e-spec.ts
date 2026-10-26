@@ -21,6 +21,7 @@ describe('Orders flow (e2e)', () => {
   let restaurantId: string;
   let otherRestaurantId: string;
   let menuItemId: string;
+  let otherMenuItemId: string;
   let guestToken: string;
   let otherGuestToken: string;
   let adminToken: string;
@@ -67,6 +68,7 @@ describe('Orders flow (e2e)', () => {
       restaurantName: 'Other E2E',
     });
     otherRestaurantId = other.restaurantId;
+    otherMenuItemId = other.menuItemId;
 
     const hall = await insertStaffUser(
       dataSource,
@@ -426,12 +428,6 @@ describe('Orders flow (e2e)', () => {
         customerPhone: '+375 29 000-00-01',
       })
       .expect(201);
-
-    const otherMenuItemId = (
-      await seedRestaurantBase(app.get(DataSource), `${runId}-filter`, {
-        restaurantName: 'Filter venue',
-      })
-    ).menuItemId;
 
     await request(app.getHttpServer())
       .post(`/restaurants/${otherRestaurantId}/pre-orders`)

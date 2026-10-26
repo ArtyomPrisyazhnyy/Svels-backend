@@ -16,22 +16,23 @@ describe('IdempotentReadRetryInterceptor', () => {
     const enotfound = Object.assign(new Error('ENOTFOUND'), {
       code: 'ENOTFOUND',
     });
-    const handler: CallHandler = {
-      handle: jest
-        .fn()
-        .mockReturnValueOnce(throwError(() => enotfound))
-        .mockReturnValueOnce(of({ ok: true })),
-    };
+    const handleMock = jest
+      .fn()
+      .mockReturnValueOnce(throwError(() => enotfound))
+      .mockReturnValueOnce(of({ ok: true }));
+    const handler: CallHandler = { handle: handleMock };
 
     interceptor
       .intercept(createContext('GET', '/users/me/pre-orders'), handler)
       .subscribe({
         next: (value) => {
           expect(value).toEqual({ ok: true });
-          expect(handler.handle).toHaveBeenCalledTimes(2);
+          expect(handleMock).toHaveBeenCalledTimes(2);
           done();
         },
-        error: done.fail,
+        error: () => {
+          done(new Error('expected success'));
+        },
       });
   });
 
@@ -39,14 +40,13 @@ describe('IdempotentReadRetryInterceptor', () => {
     const enotfound = Object.assign(new Error('ENOTFOUND'), {
       code: 'ENOTFOUND',
     });
-    const handler: CallHandler = {
-      handle: jest.fn().mockReturnValue(throwError(() => enotfound)),
-    };
+    const handleMock = jest.fn().mockReturnValue(throwError(() => enotfound));
+    const handler: CallHandler = { handle: handleMock };
 
     interceptor.intercept(createContext('GET', '/health'), handler).subscribe({
       error: (error) => {
         expect(error).toBe(enotfound);
-        expect(handler.handle).toHaveBeenCalledTimes(1);
+        expect(handleMock).toHaveBeenCalledTimes(1);
         done();
       },
     });
