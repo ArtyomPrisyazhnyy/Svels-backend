@@ -3,7 +3,7 @@
  * конвертирует в JPEG/PNG fallback + WebP и обновляет URL в БД.
  *
  * Перед запуском:
- * 1. Настройте Yandex Object Storage в .env (STORAGE_DRIVER=yandex, ключи, bucket, public URL)
+ * 1. Настройте S3 в .env (STORAGE_DRIVER=s3, S3_* или устаревшие YANDEX_*)
  * 2. Включите публичное чтение объектов в бакете
  * 3. Убедитесь, что колонки imageWebpUrl / galleryWebpUrls / logoWebpUrl существуют
  *    (dev: synchronize; prod: scripts/add-image-webp-columns.sql)
@@ -14,6 +14,11 @@
  */
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { config } from 'dotenv';
+import {
+  createS3ClientConfig,
+  resolveAppS3Env,
+  resolveStorageDriver,
+} from '../src/config/s3-env';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { Client } from 'pg';
@@ -28,7 +33,7 @@ const MAX_WIDTH = parseInt(process.env.IMAGE_MAX_WIDTH ?? '1600', 10);
 const JPEG_QUALITY = parseInt(process.env.IMAGE_JPEG_QUALITY ?? '82', 10);
 const WEBP_QUALITY = parseInt(process.env.IMAGE_WEBP_QUALITY ?? '80', 10);
 
-type Driver = 'local' | 'yandex';
+type Driver = 'local' | 's3';
 
 interface Converted {
   fallbackBuffer: Buffer;
@@ -87,35 +92,24 @@ function localPathFromUrl(url: string): string | null {
 
 function isAlreadyWebpPair(url: string, webpUrl: string | null): boolean {
   if (!webpUrl) return false;
-  if (url.includes('storage.yandexcloud.net') && webpUrl.endsWith('.webp')) {
-    return true;
-  }
   return webpUrl.endsWith('.webp') && !url.startsWith('/uploads/');
 }
 
 async function main(): Promise<void> {
-  const driver = (process.env.STORAGE_DRIVER ?? 'local') as Driver;
-  const bucket = process.env.YANDEX_STORAGE_BUCKET ?? '';
-  const publicBaseUrl = (
-    process.env.YANDEX_STORAGE_PUBLIC_BASE_URL ??
-    (bucket ? `https://storage.yandexcloud.net/${bucket}` : '')
-  ).replace(/\/$/, '');
+  const driver: Driver = resolveStorageDriver();
+  const s3Env = resolveAppS3Env();
+  const bucket = s3Env.bucket;
+  const publicBaseUrl = s3Env.publicBaseUrl;
 
-  if (driver === 'yandex' && (!bucket || !publicBaseUrl)) {
-    throw new Error('Для STORAGE_DRIVER=yandex задайте YANDEX_STORAGE_BUCKET и PUBLIC_BASE_URL');
+  if (driver === 's3' && (!bucket || !publicBaseUrl)) {
+    throw new Error(
+      'Для STORAGE_DRIVER=s3 задайте S3_BUCKET и S3_PUBLIC_BASE_URL',
+    );
   }
 
   const s3 =
-    driver === 'yandex'
-      ? new S3Client({
-          region: process.env.YANDEX_STORAGE_REGION ?? 'ru-central1',
-          endpoint: process.env.YANDEX_STORAGE_ENDPOINT ?? 'https://storage.yandexcloud.net',
-          credentials: {
-            accessKeyId: process.env.YANDEX_STORAGE_ACCESS_KEY_ID ?? '',
-            secretAccessKey: process.env.YANDEX_STORAGE_SECRET_ACCESS_KEY ?? '',
-          },
-          forcePathStyle: true,
-        })
+    driver === 's3'
+      ? new S3Client(createS3ClientConfig(s3Env))
       : null;
 
   const client = new Client(toPgClientConfig());
@@ -125,10 +119,10 @@ async function main(): Promise<void> {
 
   async function store(key: string, body: Buffer, contentType: string): Promise<string> {
     if (dryRun) {
-      return driver === 'yandex' ? `${publicBaseUrl}/${key}` : `/uploads/${key}`;
+      return driver === 's3' ? `${publicBaseUrl}/${key}` : `/uploads/${key}`;
     }
 
-    if (driver === 'yandex' && s3) {
+    if (driver === 's3' && s3) {
       await s3.send(
         new PutObjectCommand({
           Bucket: bucket,

@@ -6,51 +6,44 @@ import {
 } from '@aws-sdk/client-s3';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createS3ClientConfig, type ResolvedS3Env } from '../config/s3-env';
+import { resolveObjectKeyFromUrl } from './object-key-from-url';
 import type { ObjectStorage, StoredObject } from './storage.types';
 
 @Injectable()
-export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
-  private readonly logger = new Logger(YandexObjectStorage.name);
+export class S3ObjectStorage implements ObjectStorage, OnModuleInit {
+  private readonly logger = new Logger(S3ObjectStorage.name);
   private readonly client: S3Client;
   private readonly bucket: string;
   private readonly publicBaseUrl: string;
+  private readonly legacyPublicBaseUrls: string[];
 
   constructor(private readonly configService: ConfigService) {
-    this.bucket = this.configService.get<string>('storage.yandex.bucket', '');
-    this.publicBaseUrl = this.configService
-      .get<string>('storage.yandex.publicBaseUrl', '')
-      .replace(/\/$/, '');
-
-    this.client = new S3Client({
-      region: this.configService.get<string>(
-        'storage.yandex.region',
-        'ru-central1',
-      ),
-      endpoint: this.configService.get<string>(
-        'storage.yandex.endpoint',
-        'https://storage.yandexcloud.net',
-      ),
-      credentials: {
-        accessKeyId: this.configService.get<string>(
-          'storage.yandex.accessKeyId',
-          '',
-        ),
-        secretAccessKey: this.configService.get<string>(
-          'storage.yandex.secretAccessKey',
-          '',
-        ),
-      },
+    const s3 = this.configService.get<ResolvedS3Env>('storage.s3', {
+      bucket: '',
+      accessKeyId: '',
+      secretAccessKey: '',
+      region: '',
+      endpoint: '',
+      publicBaseUrl: '',
       forcePathStyle: true,
+      legacyPublicBaseUrls: [],
     });
+
+    this.bucket = s3.bucket;
+    this.publicBaseUrl = s3.publicBaseUrl.replace(/\/$/, '');
+    this.legacyPublicBaseUrls = s3.legacyPublicBaseUrls;
+
+    this.client = new S3Client(createS3ClientConfig(s3));
   }
 
   onModuleInit(): void {
     if (!this.bucket || !this.publicBaseUrl) {
       this.logger.error(
-        'Yandex Object Storage включён, но не заданы YANDEX_STORAGE_BUCKET / PUBLIC_BASE_URL',
+        'S3 storage включён (STORAGE_DRIVER=s3), но не заданы S3_BUCKET / S3_PUBLIC_BASE_URL',
       );
     } else {
-      this.logger.log(`Yandex Object Storage bucket=${this.bucket}`);
+      this.logger.log(`S3 object storage bucket=${this.bucket}`);
     }
   }
 
@@ -107,34 +100,11 @@ export class YandexObjectStorage implements ObjectStorage, OnModuleInit {
   }
 
   resolveKeyFromUrl(url: string): string | null {
-    if (!url) {
-      return null;
-    }
-
-    const base = this.publicBaseUrl;
-    if (base && url.startsWith(`${base}/`)) {
-      return this.normalizeKey(url.slice(base.length + 1));
-    }
-
-    try {
-      const parsed = new URL(url);
-      const path = parsed.pathname.replace(/^\/+/, '');
-      if (path.startsWith(`${this.bucket}/`)) {
-        return this.normalizeKey(path.slice(this.bucket.length + 1));
-      }
-      // virtual-hosted: bucket.storage.yandexcloud.net/key
-      if (parsed.hostname.startsWith(`${this.bucket}.`)) {
-        return this.normalizeKey(path);
-      }
-    } catch {
-      // ignore
-    }
-
-    if (url.startsWith('/uploads/')) {
-      return this.normalizeKey(url.slice('/uploads/'.length));
-    }
-
-    return null;
+    return resolveObjectKeyFromUrl(url, {
+      bucket: this.bucket,
+      publicBaseUrl: this.publicBaseUrl,
+      legacyPublicBaseUrls: this.legacyPublicBaseUrls,
+    });
   }
 
   private normalizeKey(key: string): string {

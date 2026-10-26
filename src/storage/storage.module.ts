@@ -1,28 +1,29 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { StorageDriver } from '../config/s3-env';
 import { LocalObjectStorage } from './local-object-storage';
+import { S3ObjectStorage } from './s3-object-storage';
 import { OBJECT_STORAGE } from './storage.constants';
 import { StorageService } from './storage.service';
-import { YandexObjectStorage } from './yandex-object-storage';
 
 @Global()
 @Module({
   providers: [
     LocalObjectStorage,
-    YandexObjectStorage,
+    S3ObjectStorage,
     {
       provide: OBJECT_STORAGE,
-      inject: [ConfigService, LocalObjectStorage, YandexObjectStorage],
+      inject: [ConfigService, LocalObjectStorage, S3ObjectStorage],
       useFactory: (
         configService: ConfigService,
         local: LocalObjectStorage,
-        yandex: YandexObjectStorage,
+        s3: S3ObjectStorage,
       ) => {
-        const driver = configService.get<'local' | 'yandex'>(
+        const driver = configService.get<StorageDriver>(
           'storage.driver',
           'local',
         );
-        return driver === 'yandex' ? yandex : local;
+        return driver === 's3' ? s3 : local;
       },
     },
     StorageService,
