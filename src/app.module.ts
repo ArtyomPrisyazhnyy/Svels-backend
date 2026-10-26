@@ -13,6 +13,7 @@ import googleConfig from './config/google.config';
 import guestOAuthConfig from './config/guest-oauth.config';
 import jwtConfig from './config/jwt.config';
 import bepaidConfig from './config/bepaid.config';
+import billingConfig from './config/billing.config';
 import nextSiteConfig from './config/next-site.config';
 import leadsConfig from './config/leads.config';
 import otpConfig from './config/otp.config';
@@ -48,6 +49,7 @@ import { LeadsModule } from './leads/leads.module';
 import { NextRevalidationModule } from './next-revalidation/next-revalidation.module';
 import { DevModule } from './dev/dev.module';
 import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
+import { BillingModule } from './billing/billing.module';
 import { HealthModule } from './health/health.module';
 import { CorsModule } from './common/cors/cors.module';
 import { AppThrottlerModule } from './config/throttler.config';
@@ -72,6 +74,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
         otpConfig,
         leadsConfig,
         bepaidConfig,
+        billingConfig,
         setPasswordConfig,
       ],
     }),
@@ -112,6 +115,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
     LeadsModule,
     ...(includeDevModule ? [DevModule] : []),
     TelegramBotModule,
+    BillingModule,
   ],
   providers: [
     {

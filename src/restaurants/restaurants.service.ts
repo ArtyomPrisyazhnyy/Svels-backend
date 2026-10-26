@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -40,6 +41,7 @@ import {
   AdminRestaurantListItemDto,
   OwnerInviteResponseDto,
 } from './dto/admin-restaurant.dto';
+import { VenueBillingAccessService } from '../billing/venue-billing-access.service';
 
 @Injectable()
 export class RestaurantsService {
@@ -55,6 +57,8 @@ export class RestaurantsService {
     private readonly usersService: IUsersService,
     private readonly passwordSetService: PasswordSetService,
     private readonly dataSource: DataSource,
+    @Inject(forwardRef(() => VenueBillingAccessService))
+    private readonly venueBillingAccessService: VenueBillingAccessService,
   ) {}
 
   async register(
@@ -125,6 +129,10 @@ export class RestaurantsService {
       throw new NotFoundException('Заведение для этого домена не найдено');
     }
 
+    await this.venueBillingAccessService.assertPublicVenueAvailable(
+      restaurant.id,
+    );
+
     const response: ResolveDomainResponseDto = {
       id: restaurant.id,
       name: restaurant.name,
@@ -158,6 +166,8 @@ export class RestaurantsService {
         'Заведение недоступно для регистрации гостей',
       );
     }
+
+    await this.venueBillingAccessService.assertPublicVenueAvailable(id);
 
     return this.toResponse(restaurant);
   }

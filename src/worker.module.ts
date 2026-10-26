@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import appConfig from './config/app.config';
 import redisConfig from './config/redis.config';
 import storageConfig from './config/storage.config';
+import { BillingWorkerModule } from './billing/billing-worker.module';
 import { MediaModule } from './media/media.module';
 import { StorageModule } from './storage/storage.module';
 
@@ -17,6 +18,7 @@ import { StorageModule } from './storage/storage.module';
     }),
     StorageModule,
     MediaModule.forRoot({ registerProcessor: true }),
+    BillingWorkerModule,
   ],
 })
 export class WorkerModule {}
