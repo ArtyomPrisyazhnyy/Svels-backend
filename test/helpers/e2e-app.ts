@@ -16,6 +16,7 @@ import {
   E2eGuestAppleIdTokenVerifier,
   E2eGuestGoogleIdTokenVerifier,
 } from './guest-oauth-test-verifiers';
+import { registerProductionHttpPlugins } from './e2e-http-plugins';
 
 function applyGuestOAuthE2eOverrides(
   builder: ReturnType<typeof Test.createTestingModule>,
@@ -33,23 +34,32 @@ function applyGuestOAuthE2eOverrides(
   });
 }
 
-export async function createE2eApp(
+export type CreateE2eAppOptions = {
   configureModule?: (
     builder: ReturnType<typeof Test.createTestingModule>,
-  ) => void,
+  ) => void;
+  /** Register helmet, CORS, and multipart like `src/main.ts` (before `init`). */
+  productionHttpPlugins?: boolean;
+};
+
+export async function createE2eApp(
+  options?: CreateE2eAppOptions,
 ): Promise<NestFastifyApplication> {
   const builder = Test.createTestingModule({
     imports: [AppModule],
   });
   applyGuestOAuthE2eOverrides(builder);
-  if (configureModule) {
-    configureModule(builder);
+  if (options?.configureModule) {
+    options.configureModule(builder);
   }
   const moduleFixture: TestingModule = await builder.compile();
 
   const app = moduleFixture.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter(),
   );
+  if (options?.productionHttpPlugins) {
+    await registerProductionHttpPlugins(app);
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
