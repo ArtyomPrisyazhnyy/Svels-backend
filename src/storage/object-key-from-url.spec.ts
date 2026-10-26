@@ -3,9 +3,7 @@ import { resolveObjectKeyFromUrl } from './object-key-from-url';
 const ctx = {
   bucket: 'svels-media',
   publicBaseUrl: 'https://cdn.example.com/svels-media',
-  legacyPublicBaseUrls: [
-    'https://storage.yandexcloud.net/svels-media',
-  ],
+  legacyPublicBaseUrls: ['https://storage.yandexcloud.net/svels-media'],
 };
 
 describe('resolveObjectKeyFromUrl', () => {

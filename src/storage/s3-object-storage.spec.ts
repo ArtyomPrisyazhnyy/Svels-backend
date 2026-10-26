@@ -68,7 +68,7 @@ describe('S3ObjectStorage', () => {
   it('getObject returns buffer from S3 body', async () => {
     s3Mock.on(GetObjectCommand).resolves({
       Body: {
-        transformToByteArray: async () => Uint8Array.from([1, 2, 3]),
+        transformToByteArray: () => Promise.resolve(Uint8Array.from([1, 2, 3])),
       },
     });
 
