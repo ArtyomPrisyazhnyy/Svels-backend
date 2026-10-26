@@ -1,11 +1,5 @@
-import { setDefaultResultOrder } from 'node:dns';
-import { setDefaultAutoSelectFamily } from 'node:net';
 import type { ClientConfig } from 'pg';
 import type { TlsOptions } from 'tls';
-
-// С этой сети IPv6 до Neon недоступен; Node 20+ иначе сначала ждёт AAAA и ловит ETIMEDOUT.
-setDefaultResultOrder('ipv4first');
-setDefaultAutoSelectFamily(false);
 
 export type PostgresConnectionOptions = {
   url?: string;

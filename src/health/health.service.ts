@@ -39,8 +39,21 @@ export class HealthService {
       return 'down';
     }
 
+    const raw = process.env.DB_HEALTH_CHECK_TIMEOUT_MS?.trim();
+    const timeoutMs = raw ? parseInt(raw, 10) : 2_000;
+    const effectiveTimeout =
+      Number.isNaN(timeoutMs) || timeoutMs <= 0 ? 2_000 : timeoutMs;
+
     try {
-      await this.dataSource.query('SELECT 1');
+      await Promise.race([
+        this.dataSource.query('SELECT 1'),
+        new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error('health check timeout')),
+            effectiveTimeout,
+          );
+        }),
+      ]);
       return 'up';
     } catch {
       return 'down';

@@ -3,7 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { SentryModule } from '@sentry/nestjs/setup';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { IdempotentReadRetryInterceptor } from './common/interceptors/idempotent-read-retry.interceptor';
 import appConfig from './config/app.config';
 import { validateEnv } from './config/env.validation';
 import { isDevEndpointsEnabled } from './config/is-dev-endpoints-enabled';
@@ -117,6 +118,10 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: IdempotentReadRetryInterceptor,
     },
   ],
 })
