@@ -82,7 +82,7 @@ describe('Delivery zones (e2e)', () => {
         type: 'radius',
         radiusMeters: 5000,
         deliveryFee: 4,
-        minOrder: 10,
+        minOrder: 25,
         freeDeliveryFrom: 40,
         priority: 1,
       })
@@ -97,7 +97,7 @@ describe('Delivery zones (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200)
       .expect((res) => {
-        expect((res.body as unknown[]).length).toBe(1);
+        expect(res.body).toHaveLength(1);
       });
 
     await request(app.getHttpServer())
@@ -125,7 +125,7 @@ describe('Delivery zones (e2e)', () => {
         };
         expect(body.status).toBe('in_zone');
         expect(body.deliveryFee).toBe(5);
-        expect(body.minOrder).toBe(10);
+        expect(body.minOrder).toBe(25);
       });
 
     await request(app.getHttpServer())
@@ -176,7 +176,9 @@ describe('Delivery zones (e2e)', () => {
       })
       .expect(400);
 
-    expect((outOfZone.body as { code: string }).code).toBe('DELIVERY_OUT_OF_ZONE');
+    expect((outOfZone.body as { code: string }).code).toBe(
+      'DELIVERY_OUT_OF_ZONE',
+    );
 
     const ok = await request(app.getHttpServer())
       .post(`/restaurants/${restaurantId}/pre-orders`)

@@ -57,14 +57,11 @@ export class DeliveryZonesService {
       type: dto.type,
       radiusMeters:
         dto.type === DeliveryZoneType.RADIUS ? dto.radiusMeters! : null,
-      polygon:
-        dto.type === DeliveryZoneType.POLYGON ? dto.polygon! : null,
+      polygon: dto.type === DeliveryZoneType.POLYGON ? dto.polygon! : null,
       deliveryFee: dto.deliveryFee.toFixed(2),
       minOrder: dto.minOrder.toFixed(2),
       freeDeliveryFrom:
-        dto.freeDeliveryFrom != null
-          ? dto.freeDeliveryFrom.toFixed(2)
-          : null,
+        dto.freeDeliveryFrom != null ? dto.freeDeliveryFrom.toFixed(2) : null,
       isActive: dto.isActive ?? true,
       priority: dto.priority ?? 0,
     });
@@ -102,9 +99,7 @@ export class DeliveryZonesService {
     }
     if (dto.freeDeliveryFrom !== undefined) {
       zone.freeDeliveryFrom =
-        dto.freeDeliveryFrom != null
-          ? dto.freeDeliveryFrom.toFixed(2)
-          : null;
+        dto.freeDeliveryFrom != null ? dto.freeDeliveryFrom.toFixed(2) : null;
     }
     if (dto.isActive !== undefined) {
       zone.isActive = dto.isActive;
@@ -119,11 +114,7 @@ export class DeliveryZonesService {
       zone.radiusMeters = null;
     }
 
-    assertValidZoneGeometry(
-      nextType,
-      zone.radiusMeters,
-      zone.polygon,
-    );
+    assertValidZoneGeometry(nextType, zone.radiusMeters, zone.polygon);
 
     const saved = await this.zoneRepository.save(zone);
     return this.toResponse(saved);
