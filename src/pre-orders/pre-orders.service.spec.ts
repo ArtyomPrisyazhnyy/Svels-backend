@@ -32,6 +32,22 @@ describe('PreOrdersService.create validations', () => {
     findById: jest.fn().mockResolvedValue({ phone: '375291234567' }),
   };
 
+  const deliveryPricingHook = {
+    applyForDeliveryOrder: jest.fn().mockImplementation(
+      async ({
+        itemsSubtotal,
+      }: {
+        itemsSubtotal: number;
+      }) => ({
+        itemsSubtotal,
+        deliveryFee: 0,
+        totalAmount: itemsSubtotal,
+        deliveryZoneId: null,
+        fulfillmentLocationId: null,
+      }),
+    ),
+  };
+
   const guestAddressLookup = {
     findSnapshotForOrder: jest.fn<
       Promise<{ street: string; house: string } | null>,
@@ -63,6 +79,7 @@ describe('PreOrdersService.create validations', () => {
     eventEmitter,
     schedulesService as never,
     guestAddressLookup,
+    deliveryPricingHook as never,
     usersService as never,
   );
 
