@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { BillingModule } from '../billing/billing.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
@@ -24,6 +25,7 @@ import { RestaurantsService } from './restaurants.service';
     AuthModule,
     UsersModule,
     GuestOAuthModule,
+    forwardRef(() => BillingModule),
   ],
   controllers: [
     RestaurantsController,

@@ -12,7 +12,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const logger = new Logger('ImageWorker');
-  logger.log('Image worker started (BullMQ + sharp)');
+  logger.log('Worker started (images + billing maintenance)');
 
   const shutdown = async (signal: string) => {
     logger.log(`Shutting down on ${signal}`);
