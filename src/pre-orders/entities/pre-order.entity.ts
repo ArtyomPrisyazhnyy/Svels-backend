@@ -100,6 +100,15 @@ export class PreOrder {
   statusChangedAt: Date;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
+  itemsSubtotal: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  deliveryFee: number;
+
+  @Column({ type: 'uuid', nullable: true })
+  deliveryZoneId: string | null;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalAmount: number;
 
   @Column({ type: 'text', nullable: true })

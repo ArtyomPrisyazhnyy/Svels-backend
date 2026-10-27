@@ -55,7 +55,13 @@ export function snapshotFromEntity(address: {
   floor: string | null;
   intercom: string | null;
   comment: string | null;
+  lat: string | null;
+  lng: string | null;
 }): DeliveryAddressDto {
+  const lat =
+    address.lat != null && address.lat !== '' ? Number(address.lat) : undefined;
+  const lng =
+    address.lng != null && address.lng !== '' ? Number(address.lng) : undefined;
   return {
     street: address.street,
     house: address.house,
@@ -64,5 +70,7 @@ export function snapshotFromEntity(address: {
     floor: address.floor ?? undefined,
     intercom: address.intercom ?? undefined,
     comment: address.comment ?? undefined,
+    lat: Number.isFinite(lat) ? lat : undefined,
+    lng: Number.isFinite(lng) ? lng : undefined,
   };
 }
