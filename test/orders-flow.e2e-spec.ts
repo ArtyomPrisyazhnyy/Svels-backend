@@ -21,6 +21,7 @@ describe('Orders flow (e2e)', () => {
   let restaurantId: string;
   let otherRestaurantId: string;
   let menuItemId: string;
+  let otherMenuItemId: string;
   let guestToken: string;
   let otherGuestToken: string;
   let adminToken: string;
@@ -67,6 +68,7 @@ describe('Orders flow (e2e)', () => {
       restaurantName: 'Other E2E',
     });
     otherRestaurantId = other.restaurantId;
+    otherMenuItemId = other.menuItemId;
 
     const hall = await insertStaffUser(
       dataSource,
@@ -412,5 +414,57 @@ describe('Orders flow (e2e)', () => {
       .set('Authorization', `Bearer ${productionToken}`)
       .send({ status: PreOrderStatus.PREPARING })
       .expect(200);
+  });
+
+  it('lists my pre-orders with optional restaurantId filter and cache headers', async () => {
+    await request(app.getHttpServer())
+      .post(`/restaurants/${restaurantId}/pre-orders`)
+      .set('Authorization', `Bearer ${guestToken}`)
+      .send({
+        fulfillmentType: 'takeaway',
+        paymentMethod: 'cash',
+        items: [{ menuItemId, quantity: 1 }],
+        customerName: 'Filter A',
+        customerPhone: '+375 29 000-00-01',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post(`/restaurants/${otherRestaurantId}/pre-orders`)
+      .set('Authorization', `Bearer ${guestToken}`)
+      .send({
+        fulfillmentType: 'takeaway',
+        paymentMethod: 'cash',
+        items: [{ menuItemId: otherMenuItemId, quantity: 1 }],
+        customerName: 'Filter B',
+        customerPhone: '+375 29 000-00-02',
+      })
+      .expect(201);
+
+    const allRes = await request(app.getHttpServer())
+      .get('/users/me/pre-orders')
+      .set('Authorization', `Bearer ${guestToken}`)
+      .expect(200);
+
+    expect(allRes.headers['cache-control']).toBe('private, no-cache');
+    expect(allRes.headers.etag).toBeDefined();
+    const allIds = (allRes.body as { id: string }[]).map((o) => o.id);
+    expect(allIds.length).toBeGreaterThanOrEqual(2);
+
+    const filteredRes = await request(app.getHttpServer())
+      .get(`/users/me/pre-orders?restaurantId=${restaurantId}`)
+      .set('Authorization', `Bearer ${guestToken}`)
+      .expect(200);
+
+    const filtered = filteredRes.body as { restaurantId: string }[];
+    expect(filtered.length).toBeGreaterThanOrEqual(1);
+    expect(filtered.every((o) => o.restaurantId === restaurantId)).toBe(true);
+
+    const etag = allRes.headers.etag;
+    await request(app.getHttpServer())
+      .get('/users/me/pre-orders')
+      .set('Authorization', `Bearer ${guestToken}`)
+      .set('If-None-Match', etag)
+      .expect(304);
   });
 });

@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UuidV7Subscriber } from './uuid-v7.subscriber';
 import { resolvePostgresConnection } from './pg-connection';
+import { resolvePgPoolExtra } from './pg-pool-extra';
 import type { TlsOptions } from 'tls';
 
 @Module({
@@ -28,9 +29,7 @@ import type { TlsOptions } from 'tls';
                 database: connection.database,
               }),
           ssl,
-          extra: {
-            connectionTimeoutMillis: 20_000,
-          },
+          extra: resolvePgPoolExtra(),
           autoLoadEntities: true,
           synchronize: process.env.DB_SYNC === 'true',
           migrations: ['dist/database/migrations/*.js'],

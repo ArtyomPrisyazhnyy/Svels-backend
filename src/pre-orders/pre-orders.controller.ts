@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { StaffRoles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -17,7 +18,9 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
+import { PrivateRevalidationCacheInterceptor } from '../common/interceptors/private-revalidation-cache.interceptor';
 import { CreatePreOrderDto } from './dto/create-pre-order.dto';
+import { MyPreOrdersQueryDto } from './dto/my-pre-orders-query.dto';
 import { StaffChangeOrderStatusDto } from './dto/staff-change-order-status.dto';
 import { StaffListPreOrdersQueryDto } from './dto/staff-list-pre-orders-query.dto';
 import { PreOrdersStaffService } from './pre-orders-staff.service';
@@ -42,8 +45,12 @@ export class PreOrdersController {
 
   @Get('users/me/pre-orders')
   @UseGuards(JwtAuthGuard)
-  getMyPreOrders(@CurrentUser() user: AuthenticatedUser) {
-    return this.preOrdersService.findByUser(user.id);
+  @UseInterceptors(PrivateRevalidationCacheInterceptor)
+  getMyPreOrders(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: MyPreOrdersQueryDto,
+  ) {
+    return this.preOrdersService.findByUser(user.id, query.restaurantId);
   }
 
   @Get('users/me/pre-orders/:preOrderId')

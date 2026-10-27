@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { withIdempotentReadRetry } from '../database/pg-connection-retry.util';
 import {
   BOOKING_SETTINGS_SERVICE,
   FLOOR_PLANS_SERVICE,
@@ -557,10 +558,12 @@ export class BookingsService {
   }
 
   async findByUser(userId: string): Promise<Booking[]> {
-    return this.bookingRepository.find({
-      where: { userId },
-      order: { bookingDate: 'DESC', bookingTime: 'DESC' },
-    });
+    return withIdempotentReadRetry(() =>
+      this.bookingRepository.find({
+        where: { userId },
+        order: { bookingDate: 'DESC', bookingTime: 'DESC' },
+      }),
+    );
   }
 
   async findByRestaurant(restaurantId: string): Promise<Booking[]> {
