@@ -3,11 +3,13 @@ import { DataSource } from 'typeorm';
 import { generateUuidV7 } from '../common/utils/uuid.util';
 import { LoyaltySettingsService } from '../loyalty-settings/loyalty-settings.service';
 import { buildLoyaltyBalance } from './loyalty-balance.util';
+import {
+  applyStreakOnVisit,
+  isVisitSeriesExpired,
+} from './loyalty-streak.util';
 import type { LoyaltyBalanceResponseDto } from './dto/loyalty-balance.dto';
 import { GuestLoyaltyBalance } from './entities/guest-loyalty-balance.entity';
 import { LoyaltyVisit } from './entities/loyalty-visit.entity';
-
-const DAY_MS = 86_400_000;
 
 export interface RecordVisitParams {
   restaurantId: string;
@@ -54,15 +56,35 @@ export class LoyaltyService {
         balance.visits = 0;
         balance.totalVisits = 0;
         balance.lastVisitAt = null;
+        balance.streakStartedAt = null;
+        balance.lastVisitDay = null;
+        balance.streakDays = 0;
+        balance.longestStreak = 0;
       }
 
-      const seriesExpired =
-        balance.lastVisitAt !== null &&
-        now.getTime() - balance.lastVisitAt.getTime() > expireDays * DAY_MS;
+      const seriesExpired = isVisitSeriesExpired(
+        balance.lastVisitAt,
+        expireDays,
+        now,
+      );
 
       balance.visits = seriesExpired ? 1 : balance.visits + 1;
       balance.totalVisits += 1;
       balance.lastVisitAt = now;
+
+      const streak = applyStreakOnVisit({
+        streakDays: balance.streakDays,
+        streakStartedAt: balance.streakStartedAt,
+        lastVisitDay: balance.lastVisitDay,
+        longestStreak: balance.longestStreak,
+        expireDays,
+        now,
+      });
+      balance.streakDays = streak.streakDays;
+      balance.streakStartedAt = streak.streakStartedAt;
+      balance.lastVisitDay = streak.lastVisitDay;
+      balance.longestStreak = streak.longestStreak;
+
       await manager.save(balance);
 
       return true;
