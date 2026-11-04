@@ -24,6 +24,24 @@ export interface PlatformAuthUserRecord {
   restaurantId: string | null;
 }
 
+export interface JwtValidationUserRecord {
+  id: string;
+  email: string;
+  role: UserRole;
+  restaurantId: string | null;
+  passwordChangedAt: Date | null;
+}
+
+export type PasswordSecurityReason =
+  | 'self_service'
+  | 'set_password'
+  | 'logout_all';
+
+export interface PasswordSecurityAudit {
+  reason: PasswordSecurityReason;
+  clientIp?: string;
+}
+
 export interface GuestAuthUserRecord {
   id: string;
   email: string;
@@ -75,12 +93,21 @@ export interface IUsersService {
   ): Promise<GuestAuthUserRecord | null>;
   findByGoogleId(googleId: string): Promise<UserResponseDto | null>;
   findById(id: string): Promise<UserResponseDto | null>;
+  findForJwtValidation(id: string): Promise<JwtValidationUserRecord | null>;
   findOrCreateFromGoogle(profile: GoogleProfileInput): Promise<UserResponseDto>;
   updateProfile(
     id: string,
     firstName?: string,
     lastName?: string,
   ): Promise<UserResponseDto>;
-  updatePassword(id: string, password: string): Promise<UserResponseDto>;
+  updatePassword(
+    id: string,
+    password: string,
+    audit?: PasswordSecurityAudit,
+  ): Promise<UserResponseDto>;
+  invalidateAllSessions(
+    id: string,
+    audit: PasswordSecurityAudit,
+  ): Promise<UserResponseDto>;
   deleteAccount(id: string): Promise<void>;
 }
