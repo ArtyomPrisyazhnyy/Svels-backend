@@ -1,15 +1,15 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-const jwtVerify = jest.fn();
-
 jest.mock('jose', () => ({
-  jwtVerify,
+  jwtVerify: jest.fn(),
   createRemoteJWKSet: jest.fn(),
 }));
 
-import type { JWTVerifyGetKey } from 'jose';
+import { jwtVerify, type JWTVerifyGetKey } from 'jose';
 import { GuestAppleIdTokenVerifier } from './guest-apple-id-token.verifier';
+
+const jwtVerifyMock = jest.mocked(jwtVerify);
 
 describe('GuestAppleIdTokenVerifier', () => {
   let verifier: GuestAppleIdTokenVerifier;
@@ -31,7 +31,7 @@ describe('GuestAppleIdTokenVerifier', () => {
   } as unknown as ConfigService;
 
   beforeEach(() => {
-    jwtVerify.mockReset();
+    jwtVerifyMock.mockReset();
     verifier = new GuestAppleIdTokenVerifier(configService, () => mockJwks);
   });
 
@@ -50,7 +50,7 @@ describe('GuestAppleIdTokenVerifier', () => {
   });
 
   it('rejects expired token', async () => {
-    jwtVerify.mockRejectedValue(
+    jwtVerifyMock.mockRejectedValue(
       new Error('"exp" claim timestamp check failed'),
     );
 
@@ -60,7 +60,7 @@ describe('GuestAppleIdTokenVerifier', () => {
   });
 
   it('rejects wrong issuer', async () => {
-    jwtVerify.mockRejectedValue(new Error('unexpected "iss" claim value'));
+    jwtVerifyMock.mockRejectedValue(new Error('unexpected "iss" claim value'));
 
     await expect(verifier.verify('token')).rejects.toBeInstanceOf(
       BadRequestException,
@@ -68,7 +68,7 @@ describe('GuestAppleIdTokenVerifier', () => {
   });
 
   it('rejects wrong audience', async () => {
-    jwtVerify.mockRejectedValue(new Error('unexpected "aud" claim value'));
+    jwtVerifyMock.mockRejectedValue(new Error('unexpected "aud" claim value'));
 
     await expect(verifier.verify('token')).rejects.toBeInstanceOf(
       BadRequestException,
@@ -76,7 +76,7 @@ describe('GuestAppleIdTokenVerifier', () => {
   });
 
   it('returns profile for a valid token', async () => {
-    jwtVerify.mockResolvedValue({
+    jwtVerifyMock.mockResolvedValue({
       payload: {
         sub: 'apple-sub',
         email: 'hide@privaterelay.appleid.com',

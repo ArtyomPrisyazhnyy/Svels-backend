@@ -10,9 +10,14 @@
       "testPathIgnorePatterns": ["dev-endpoints-enabled\\.e2e-spec\\.ts$"],
       "globalSetup": "<rootDir>/test/global-setup.ts",
       "transform": {
-        "^.+\\.(t|j)s$": "ts-jest"
+        "^.+\\.(t|j)s$": [
+          "@swc/jest",
+          { "configFile": "./jest.swc.config.json" }
+        ]
       },
-      "transformIgnorePatterns": ["node_modules/(?!uuid|jose/)"]
+      "transformIgnorePatterns": [
+        "node_modules/(?!(@nestjs|uuid|jose|class-validator|class-transformer|rxjs)/)"
+      ]
     },
     {
       "displayName": "e2e-dev",
@@ -23,9 +28,14 @@
       "setupFiles": ["<rootDir>/test/setup-dev-enabled-env.ts"],
       "globalSetup": "<rootDir>/test/global-setup.ts",
       "transform": {
-        "^.+\\.(t|j)s$": "ts-jest"
+        "^.+\\.(t|j)s$": [
+          "@swc/jest",
+          { "configFile": "./jest.swc.config.json" }
+        ]
       },
-      "transformIgnorePatterns": ["node_modules/(?!uuid|jose/)"]
+      "transformIgnorePatterns": [
+        "node_modules/(?!(@nestjs|uuid|jose|class-validator|class-transformer|rxjs)/)"
+      ]
     }
   ]
 }
