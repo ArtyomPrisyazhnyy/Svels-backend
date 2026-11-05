@@ -2,6 +2,16 @@ jest.mock('../payments/payments.service', () => ({
   PaymentsService: class PaymentsService {},
 }));
 
+jest.mock('./pricing/minsk-time.util', () => {
+  const actual = jest.requireActual<typeof import('./pricing/minsk-time.util')>(
+    './pricing/minsk-time.util',
+  );
+  return {
+    ...actual,
+    isRestaurantOpenAt: jest.fn(() => true),
+  };
+});
+
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FulfillmentType } from '../common/enums/fulfillment-type.enum';
 import { PaymentMethod } from '../common/enums/payment-method.enum';
@@ -70,7 +80,7 @@ describe('PreOrdersService.create validations', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(minsTime, 'isRestaurantOpenAt').mockReturnValue(true);
+    jest.mocked(minsTime.isRestaurantOpenAt).mockReturnValue(true);
     menuService.getMenuByRestaurant.mockResolvedValue({ categories: [] });
   });
 
@@ -221,7 +231,7 @@ describe('PreOrdersService.create validations', () => {
       paymentOnline: true,
       deliveryForSomeoneElse: false,
     });
-    jest.spyOn(minsTime, 'isRestaurantOpenAt').mockReturnValue(false);
+    jest.mocked(minsTime.isRestaurantOpenAt).mockReturnValue(false);
 
     await expect(
       service.create(restaurantId, 'user', baseDto),

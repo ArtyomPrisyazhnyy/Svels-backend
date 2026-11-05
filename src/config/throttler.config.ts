@@ -1,7 +1,7 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import Redis from 'ioredis';
+import { RedisThrottlerStorageService } from './redis-throttler-storage.service';
 
 const useRedisStorage = (): boolean =>
   process.env.THROTTLER_STORAGE === 'redis';
@@ -26,7 +26,7 @@ export const AppThrottlerModule = ThrottlerModule.forRootAsync({
 
     return {
       throttlers,
-      storage: new ThrottlerStorageRedisService(redis),
+      storage: new RedisThrottlerStorageService(redis),
     };
   },
 });
