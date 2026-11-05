@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -24,6 +25,8 @@ import {
   GoogleProfileInput,
   GuestAuthUserRecord,
   IUsersService,
+  JwtValidationUserRecord,
+  PasswordSecurityAudit,
   PlatformAuthUserRecord,
 } from './interfaces/users-service.interface';
 
@@ -37,8 +40,18 @@ const PLATFORM_AUTH_USER_SELECT = {
   restaurantId: true,
 } as const;
 
+const JWT_VALIDATION_USER_SELECT = {
+  id: true,
+  email: true,
+  role: true,
+  restaurantId: true,
+  passwordChangedAt: true,
+} as const;
+
 @Injectable()
 export class UsersService implements IUsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -321,6 +334,15 @@ export class UsersService implements IUsersService {
     return user ? this.toResponse(user) : null;
   }
 
+  async findForJwtValidation(
+    id: string,
+  ): Promise<JwtValidationUserRecord | null> {
+    return this.userRepository.findOne({
+      where: { id },
+      select: JWT_VALIDATION_USER_SELECT,
+    });
+  }
+
   async findOrCreateFromGoogle(
     profile: GoogleProfileInput,
   ): Promise<UserResponseDto> {
@@ -385,15 +407,36 @@ export class UsersService implements IUsersService {
     return this.toResponse(saved);
   }
 
-  async updatePassword(id: string, password: string): Promise<UserResponseDto> {
+  async updatePassword(
+    id: string,
+    password: string,
+    audit?: PasswordSecurityAudit,
+  ): Promise<UserResponseDto> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('Пользователь не найден');
     }
 
     user.passwordHash = await bcrypt.hash(password, 12);
+    user.passwordChangedAt = new Date();
 
     const saved = await this.userRepository.save(user);
+    this.logPasswordSecurityEvent(saved.id, saved.passwordChangedAt, audit);
+    return this.toResponse(saved);
+  }
+
+  async invalidateAllSessions(
+    id: string,
+    audit: PasswordSecurityAudit,
+  ): Promise<UserResponseDto> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    user.passwordChangedAt = new Date();
+    const saved = await this.userRepository.save(user);
+    this.logPasswordSecurityEvent(saved.id, saved.passwordChangedAt, audit);
     return this.toResponse(saved);
   }
 
@@ -412,6 +455,20 @@ export class UsersService implements IUsersService {
     this.eventEmitter.emit(
       UserDeletedEvent.EVENT,
       new UserDeletedEvent(id, user.restaurantId),
+    );
+  }
+
+  private logPasswordSecurityEvent(
+    userId: string,
+    changedAt: Date | null,
+    audit?: PasswordSecurityAudit,
+  ): void {
+    if (!audit || !changedAt) {
+      return;
+    }
+
+    this.logger.log(
+      `Password security event userId=${userId} timestamp=${changedAt.toISOString()} ip=${audit.clientIp ?? 'unknown'} reason=${audit.reason}`,
     );
   }
 
