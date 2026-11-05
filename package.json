@@ -89,7 +89,7 @@
     "@types/uuid": "^10.0.0",
     "aws-sdk-client-mock": "^4.1.0",
     "chokidar-cli": "^3.0.0",
-    "concurrently": "^10.0.3",
+    "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "erdia": "^3.7.1",
