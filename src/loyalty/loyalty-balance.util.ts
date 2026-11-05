@@ -1,6 +1,10 @@
 import type { LoyaltySettingsResponseDto } from '../loyalty-settings/dto/loyalty-settings.dto';
 import type { LoyaltyBalanceResponseDto } from './dto/loyalty-balance.dto';
 import type { GuestLoyaltyBalance } from './entities/guest-loyalty-balance.entity';
+import {
+  computeStreakPresentation,
+  isVisitSeriesExpired,
+} from './loyalty-streak.util';
 
 const DAY_MS = 86_400_000;
 
@@ -22,9 +26,21 @@ export function buildLoyaltyBalance(
 ): LoyaltyBalanceSnapshot {
   const expireMs = settings.flameExpireDays * DAY_MS;
   const lastVisitAt = balance?.lastVisitAt ?? null;
-  const expired =
-    lastVisitAt !== null && now.getTime() - lastVisitAt.getTime() > expireMs;
+  const expired = isVisitSeriesExpired(
+    lastVisitAt,
+    settings.flameExpireDays,
+    now,
+  );
   const visits = balance && !expired ? balance.visits : 0;
+  const streak = computeStreakPresentation({
+    streakDays: balance?.streakDays ?? 0,
+    streakStartedAt: balance?.streakStartedAt ?? null,
+    lastVisitDay: balance?.lastVisitDay ?? null,
+    lastVisitAt,
+    longestStreak: balance?.longestStreak ?? 0,
+    expireDays: settings.flameExpireDays,
+    now,
+  });
   const expiresAt =
     visits > 0 && lastVisitAt !== null
       ? new Date(lastVisitAt.getTime() + expireMs)
@@ -63,5 +79,9 @@ export function buildLoyaltyBalance(
       : null,
     availableRewards:
       settings.flameRewardsEnabled && currentLevel ? currentLevel.rewards : [],
+    streakStartedAt: streak.streakStartedAt,
+    streakDays: streak.streakDays,
+    longestStreak: streak.longestStreak,
+    status: streak.status,
   };
 }
