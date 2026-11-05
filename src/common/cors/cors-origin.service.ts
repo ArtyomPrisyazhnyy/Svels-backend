@@ -65,9 +65,7 @@ export class CorsOriginService {
       this.originCache.size >= MAX_ORIGIN_CACHE_ENTRIES &&
       !this.originCache.has(normalized)
     ) {
-      const oldestKey = this.originCache.keys().next().value as
-        | string
-        | undefined;
+      const oldestKey = this.originCache.keys().next().value;
       if (oldestKey !== undefined) {
         this.originCache.delete(oldestKey);
       }

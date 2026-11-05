@@ -488,13 +488,7 @@ export class PreOrdersService {
           return savedOrder;
         });
       } catch (error) {
-        const code =
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          typeof (error as { code: unknown }).code === 'string'
-            ? (error as { code: string }).code
-            : '';
+        const code = postgresErrorCode(error);
         if (code === '23505' && attempt < MAX_ORDER_NUMBER_RETRIES - 1) {
           continue;
         }
@@ -532,4 +526,12 @@ export class PreOrdersService {
       'Укажите номер телефона для оформления заказа',
     );
   }
+}
+
+function postgresErrorCode(error: unknown): string {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return '';
+  }
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : '';
 }

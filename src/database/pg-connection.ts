@@ -63,7 +63,7 @@ export function toPgClientConfig(): ClientConfig {
   if (connection.url) {
     return {
       connectionString: connection.url,
-      ssl: connection.ssl as ClientConfig['ssl'],
+      ssl: connection.ssl,
     };
   }
 
@@ -73,6 +73,6 @@ export function toPgClientConfig(): ClientConfig {
     user: connection.username,
     password: connection.password,
     database: connection.database,
-    ssl: connection.ssl as ClientConfig['ssl'],
+    ssl: connection.ssl,
   };
 }

@@ -2,10 +2,15 @@ jest.mock('../payments/payments.service', () => ({
   PaymentsService: class PaymentsService {},
 }));
 
-jest.mock('./pricing/minsk-time.util', () => ({
-  ...jest.requireActual('./pricing/minsk-time.util'),
-  isRestaurantOpenAt: jest.fn(() => true),
-}));
+jest.mock('./pricing/minsk-time.util', () => {
+  const actual = jest.requireActual<typeof import('./pricing/minsk-time.util')>(
+    './pricing/minsk-time.util',
+  );
+  return {
+    ...actual,
+    isRestaurantOpenAt: jest.fn(() => true),
+  };
+});
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FulfillmentType } from '../common/enums/fulfillment-type.enum';
