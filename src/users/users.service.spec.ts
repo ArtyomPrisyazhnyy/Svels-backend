@@ -19,7 +19,12 @@ describe('UsersService platform auth lookup', () => {
   };
 
   const eventEmitter = { emit: jest.fn() };
-  const service = new UsersService(repository as never, eventEmitter as never);
+  const cacheService = { del: jest.fn() };
+  const service = new UsersService(
+    repository as never,
+    eventEmitter as never,
+    cacheService as never,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();

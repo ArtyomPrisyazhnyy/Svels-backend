@@ -210,11 +210,16 @@ describe('W2-B-ONB onboarding', () => {
       }),
     };
 
+    const nextRevalidationService = {
+      revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
+    };
+
     const service = new RestaurantsService(
       restaurantRepository as never,
       registrationRepository as never,
       eventEmitter as never,
       cacheService as never,
+      nextRevalidationService as never,
       locationsService as never,
       usersService as never,
       passwordSetService as never,

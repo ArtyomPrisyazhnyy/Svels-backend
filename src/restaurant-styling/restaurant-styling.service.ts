@@ -1,6 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CacheKeys, CacheTtl } from '../cache/cache-keys';
+import { CacheService } from '../cache/cache.service';
+import {
+  MagazineCardLayout,
+  RestaurantButtonShape,
+  RestaurantButtonVariant,
+  RestaurantCardStyle,
+  RestaurantColorTheme,
+  RestaurantCurrencyDisplay,
+  RestaurantFontFamily,
+  RestaurantFooterAccent,
+  RestaurantFooterLayout,
+  RestaurantHeaderStyle,
+  RestaurantSwitcherStyle,
+} from '../common/enums/restaurant-styling.enum';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import {
   RestaurantStylingResponseDto,
@@ -13,14 +28,30 @@ export class RestaurantStylingService {
   constructor(
     @InjectRepository(RestaurantStyling)
     private readonly stylingRepository: Repository<RestaurantStyling>,
+    private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
-  async getByRestaurant(
+  /** Публичное чтение: без записи в БД, с кэшем. */
+  async getPublicByRestaurant(
     restaurantId: string,
   ): Promise<RestaurantStylingResponseDto> {
-    const styling = await this.findOrCreate(restaurantId);
-    return this.toResponse(styling);
+    const cacheKey = CacheKeys.styling(restaurantId);
+    const cached =
+      await this.cacheService.get<RestaurantStylingResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const styling = await this.stylingRepository.findOne({
+      where: { restaurantId },
+    });
+    const response = styling
+      ? this.toResponse(styling)
+      : this.defaultResponse(restaurantId);
+
+    await this.cacheService.set(cacheKey, response, CacheTtl.publicRestaurant);
+    return response;
   }
 
   async update(
@@ -70,6 +101,7 @@ export class RestaurantStylingService {
     }
 
     const saved = await this.stylingRepository.save(styling);
+    await this.cacheService.del(CacheKeys.styling(restaurantId));
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
@@ -86,6 +118,26 @@ export class RestaurantStylingService {
 
     const created = this.stylingRepository.create({ restaurantId });
     return this.stylingRepository.save(created);
+  }
+
+  private defaultResponse(restaurantId: string): RestaurantStylingResponseDto {
+    return {
+      restaurantId,
+      fontFamily: RestaurantFontFamily.SYSTEM,
+      colorTheme: RestaurantColorTheme.CLASSIC,
+      currencyDisplay: RestaurantCurrencyDisplay.BYN_GLYPH,
+      buttonShape: RestaurantButtonShape.ROUNDED,
+      buttonVariant: RestaurantButtonVariant.FILLED,
+      switcherStyle: RestaurantSwitcherStyle.PILL,
+      cardStyle: RestaurantCardStyle.CLASSIC,
+      magazineCardLayout: MagazineCardLayout.CONTENT_LEFT,
+      menuCategoryNavEnabled: false,
+      favoritesEnabled: true,
+      headerStyle: RestaurantHeaderStyle.GLASS,
+      footerLayout: RestaurantFooterLayout.COLUMNS,
+      footerAccent: RestaurantFooterAccent.FLAT,
+      updatedAt: new Date(0),
+    };
   }
 
   private toResponse(styling: RestaurantStyling): RestaurantStylingResponseDto {

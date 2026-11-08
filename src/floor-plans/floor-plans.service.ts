@@ -12,6 +12,7 @@ import { TableObjectType } from '../common/enums/table-object-type.enum';
 import { TableShape } from '../common/enums/table-shape.enum';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
+import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import type { BookingSettingsService } from '../booking-settings/booking-settings.service';
 import type { DecorLayoutData } from './entities/decor-layout-data.type';
@@ -86,6 +87,7 @@ export class FloorPlansService {
     @InjectRepository(Table)
     private readonly tableRepository: Repository<Table>,
     private readonly cacheService: CacheService,
+    private readonly nextRevalidationService: NextRevalidationService,
     @Inject(BOOKING_SETTINGS_SERVICE)
     private readonly bookingSettingsService: BookingSettingsService,
     private readonly dataSource: DataSource,
@@ -503,21 +505,14 @@ export class FloorPlansService {
     };
   }
 
-  /**
-   * Атомарная инвалидация всех связанных кэшей (правило data-transactions:
-   * multi-key операция одним pipeline-батчем). Затрагивает floor-plan, public-layout
-   * и availability на все даты (через pattern-удаление).
-   */
+  /** Инвалидация floor-plan и public-layout одним pipeline-батчем. */
   private async invalidateCache(restaurantId: string): Promise<void> {
-    const keys = [
+    await this.cacheService.delMany([
       CacheKeys.floorPlan(restaurantId),
       CacheKeys.publicLayout(restaurantId),
-    ];
-    await Promise.all([
-      this.cacheService.delMany(keys),
-      this.cacheService.delByPattern(
-        `restaurant:${restaurantId}:availability:*`,
-      ),
     ]);
+    await this.nextRevalidationService.revalidateRestaurantPublicPage(
+      restaurantId,
+    );
   }
 }

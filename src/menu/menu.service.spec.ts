@@ -57,6 +57,27 @@ describe('MenuService categories', () => {
     expect(saved.sortOrder).toBe(4);
   });
 
+  it('invalidates menu cache after category create', async () => {
+    categoryRepository.maximum.mockResolvedValue(null);
+    categoryRepository.create.mockImplementation(
+      (value: Partial<MenuCategory>) => value,
+    );
+    categoryRepository.save.mockResolvedValue({
+      id: 'cat-new',
+      restaurantId: 'rest-id',
+      sortOrder: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await service.createCategory('rest-id', { name: 'Starters' });
+
+    expect(cacheService.del).toHaveBeenCalledWith('restaurant:rest-id:menu');
+    expect(
+      nextRevalidationService.revalidateRestaurantPublicPage,
+    ).toHaveBeenCalledWith('rest-id');
+  });
+
   it('orders categories by sortOrder, createdAt, id when loading menu', async () => {
     categoryRepository.find.mockResolvedValue([]);
 

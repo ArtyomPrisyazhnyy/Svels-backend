@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CacheKeys, CacheTtl } from '../cache/cache-keys';
+import { CacheService } from '../cache/cache.service';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import {
   OrderSettingsResponseDto,
@@ -13,14 +15,45 @@ export class OrderSettingsService {
   constructor(
     @InjectRepository(RestaurantOrderSettings)
     private readonly settingsRepository: Repository<RestaurantOrderSettings>,
+    private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
   ) {}
 
+  /**
+   * Внутренние модули (pre-orders): всегда из БД, без cache-aside —
+   * иначе устаревший ordersPaused после паузы или прямого SQL в e2e.
+   */
   async getByRestaurant(
     restaurantId: string,
   ): Promise<OrderSettingsResponseDto> {
-    const settings = await this.findOrCreate(restaurantId);
-    return this.toResponse(settings);
+    const settings = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
+    return settings
+      ? this.toResponse(settings)
+      : this.defaultResponse(restaurantId);
+  }
+
+  /** Публичное чтение: без записи в БД, с кэшем. */
+  async getPublicByRestaurant(
+    restaurantId: string,
+  ): Promise<OrderSettingsResponseDto> {
+    const cacheKey = CacheKeys.orderSettings(restaurantId);
+    const cached =
+      await this.cacheService.get<OrderSettingsResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const settings = await this.settingsRepository.findOne({
+      where: { restaurantId },
+    });
+    const response = settings
+      ? this.toResponse(settings)
+      : this.defaultResponse(restaurantId);
+
+    await this.cacheService.set(cacheKey, response, CacheTtl.publicRestaurant);
+    return response;
   }
 
   async updatePause(
@@ -30,6 +63,7 @@ export class OrderSettingsService {
     const settings = await this.findOrCreate(restaurantId);
     settings.ordersPaused = ordersPaused;
     const saved = await this.settingsRepository.save(settings);
+    await this.invalidateCache(restaurantId);
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
@@ -68,6 +102,7 @@ export class OrderSettingsService {
     this.assertHasPaymentOption(settings);
 
     const saved = await this.settingsRepository.save(settings);
+    await this.invalidateCache(restaurantId);
     await this.nextRevalidationService.revalidateRestaurantPublicPage(
       restaurantId,
     );
@@ -86,6 +121,25 @@ export class OrderSettingsService {
 
     const created = this.settingsRepository.create({ restaurantId });
     return this.settingsRepository.save(created);
+  }
+
+  private async invalidateCache(restaurantId: string): Promise<void> {
+    await this.cacheService.del(CacheKeys.orderSettings(restaurantId));
+  }
+
+  private defaultResponse(restaurantId: string): OrderSettingsResponseDto {
+    return {
+      restaurantId,
+      fulfillmentDelivery: false,
+      fulfillmentTakeaway: true,
+      fulfillmentDineIn: true,
+      paymentCash: true,
+      paymentCardOnSite: true,
+      paymentOnline: false,
+      deliveryForSomeoneElse: false,
+      ordersPaused: false,
+      updatedAt: new Date(0),
+    };
   }
 
   private assertHasFulfillmentOption(settings: RestaurantOrderSettings): void {

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
   Inject,
   Injectable,
   NotFoundException,
@@ -8,8 +9,13 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, ILike, Repository } from 'typeorm';
-import { CacheKeys } from '../cache/cache-keys';
+import {
+  CacheKeys,
+  CacheTtl,
+  restaurantScopedCacheKeys,
+} from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
+import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
 import { RestaurantStatus } from '../common/enums/restaurant-status.enum';
 import {
   isValidDomain,
@@ -50,6 +56,8 @@ export class RestaurantsService {
     private readonly registrationRepository: Repository<RestaurantRegistrationRequest>,
     private readonly eventEmitter: EventEmitter2,
     private readonly cacheService: CacheService,
+    private readonly nextRevalidationService: NextRevalidationService,
+    @Inject(forwardRef(() => RestaurantLocationsService))
     private readonly locationsService: RestaurantLocationsService,
     @Inject(USERS_SERVICE)
     private readonly usersService: IUsersService,
@@ -112,9 +120,14 @@ export class RestaurantsService {
 
     const cacheKey = CacheKeys.restaurantByDomain(domain);
     const cached =
-      await this.cacheService.get<ResolveDomainResponseDto>(cacheKey);
-    if (cached) {
-      return cached;
+      await this.cacheService.getWithSentinel<ResolveDomainResponseDto>(
+        cacheKey,
+      );
+    if (cached.status === 'hit') {
+      if (cached.value === null) {
+        throw new NotFoundException('Заведение для этого домена не найдено');
+      }
+      return cached.value;
     }
 
     const restaurant = await this.restaurantRepository.findOne({
@@ -122,6 +135,10 @@ export class RestaurantsService {
     });
 
     if (!restaurant) {
+      await this.cacheService.setNullSentinel(
+        cacheKey,
+        CacheTtl.domainNegative,
+      );
       throw new NotFoundException('Заведение для этого домена не найдено');
     }
 
@@ -131,35 +148,39 @@ export class RestaurantsService {
       customDomain: domain,
     };
 
-    await this.cacheService.set(cacheKey, response);
+    await this.cacheService.set(cacheKey, response, CacheTtl.publicRestaurant);
     return response;
   }
 
   async findById(id: string): Promise<RestaurantResponseDto> {
+    const cacheKey = CacheKeys.restaurantPublic(id);
+    const cached = await this.cacheService.get<RestaurantResponseDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const restaurant = await this.restaurantRepository.findOne({
       where: { id },
     });
     if (!restaurant) {
       throw new NotFoundException('Ресторан не найден');
     }
-    return this.toResponse(restaurant);
+
+    const response = this.toResponse(restaurant);
+    await this.cacheService.set(cacheKey, response, CacheTtl.publicRestaurant);
+    return response;
   }
 
   async ensureApproved(id: string): Promise<RestaurantResponseDto> {
-    const restaurant = await this.restaurantRepository.findOne({
-      where: { id },
-    });
-    if (!restaurant) {
-      throw new NotFoundException('Ресторан не найден');
-    }
+    const response = await this.findById(id);
 
-    if (restaurant.status !== RestaurantStatus.APPROVED) {
+    if (response.status !== RestaurantStatus.APPROVED) {
       throw new BadRequestException(
         'Заведение недоступно для регистрации гостей',
       );
     }
 
-    return this.toResponse(restaurant);
+    return response;
   }
 
   async update(
@@ -173,6 +194,9 @@ export class RestaurantsService {
       throw new NotFoundException('Ресторан не найден');
     }
 
+    const previousDomain = restaurant.customDomain;
+    const affectsCachedProfile = this.updateTouchesCachedProfile(dto);
+
     if (dto.name) restaurant.name = sanitizeText(dto.name);
     if (dto.description !== undefined) {
       restaurant.description = dto.description
@@ -182,13 +206,11 @@ export class RestaurantsService {
     if (dto.address) restaurant.address = sanitizeText(dto.address);
 
     if (dto.customDomain !== undefined) {
-      const previousDomain = restaurant.customDomain;
       const nextDomain = await this.resolveCustomDomainUpdate(
         id,
         dto.customDomain,
       );
       restaurant.customDomain = nextDomain;
-      await this.invalidateDomainCache(previousDomain, nextDomain);
     }
 
     if (dto.logoUrl !== undefined) {
@@ -220,6 +242,18 @@ export class RestaurantsService {
     }
 
     const saved = await this.restaurantRepository.save(restaurant);
+
+    if (affectsCachedProfile) {
+      await this.invalidateRestaurantCaches(
+        saved.id,
+        previousDomain,
+        saved.customDomain,
+      );
+      await this.nextRevalidationService.revalidateRestaurantPublicPage(
+        saved.id,
+      );
+    }
+
     return this.toResponse(saved);
   }
 
@@ -231,11 +265,11 @@ export class RestaurantsService {
       throw new NotFoundException('Ресторан не найден');
     }
 
+    const keys = restaurantScopedCacheKeys(id);
     if (restaurant.customDomain) {
-      await this.cacheService.del(
-        CacheKeys.restaurantByDomain(restaurant.customDomain),
-      );
+      keys.push(CacheKeys.restaurantByDomain(restaurant.customDomain));
     }
+    await this.cacheService.delMany(keys);
 
     await this.restaurantRepository.delete({ id });
   }
@@ -321,6 +355,8 @@ export class RestaurantsService {
 
     const saved = await this.restaurantRepository.save(restaurant);
     await this.locationsService.seedFromRegistration(saved.id, locations);
+
+    await this.cacheService.del(CacheKeys.restaurantPublic(saved.id));
 
     request.status = RestaurantStatus.APPROVED;
     await this.registrationRepository.save(request);
@@ -528,17 +564,38 @@ export class RestaurantsService {
     return domain;
   }
 
-  private async invalidateDomainCache(
+  private updateTouchesCachedProfile(dto: UpdateRestaurantDto): boolean {
+    return (
+      dto.name !== undefined ||
+      dto.description !== undefined ||
+      dto.address !== undefined ||
+      dto.customDomain !== undefined ||
+      dto.logoUrl !== undefined ||
+      dto.logoWebpUrl !== undefined ||
+      dto.unp !== undefined ||
+      dto.legalName !== undefined ||
+      dto.legalAddress !== undefined ||
+      dto.contactPhone !== undefined ||
+      dto.contactEmail !== undefined
+    );
+  }
+
+  private async invalidateRestaurantCaches(
+    restaurantId: string,
     previousDomain: string | null,
     nextDomain: string | null,
   ): Promise<void> {
+    const keys = [CacheKeys.restaurantPublic(restaurantId)];
+
+    const domainKeys = new Set<string>();
     if (previousDomain) {
-      await this.cacheService.del(CacheKeys.restaurantByDomain(previousDomain));
+      domainKeys.add(CacheKeys.restaurantByDomain(previousDomain));
+    }
+    if (nextDomain) {
+      domainKeys.add(CacheKeys.restaurantByDomain(nextDomain));
     }
 
-    if (nextDomain && nextDomain !== previousDomain) {
-      await this.cacheService.del(CacheKeys.restaurantByDomain(nextDomain));
-    }
+    await this.cacheService.delMany([...keys, ...domainKeys]);
   }
 
   private toRegistrationPayload(

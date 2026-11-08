@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CacheKeys } from '../../cache/cache-keys';
+import { CacheService } from '../../cache/cache.service';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { RestaurantApprovedEvent } from '../../restaurants/events/restaurant-approved.event';
 import { User } from '../entities/user.entity';
@@ -11,6 +13,7 @@ export class RestaurantApprovedListener {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly cacheService: CacheService,
   ) {}
 
   @OnEvent('restaurant.approved')
@@ -27,5 +30,6 @@ export class RestaurantApprovedListener {
     user.role = UserRole.RESTAURANT_ADMIN;
     user.restaurantId = event.restaurantId;
     await this.userRepository.save(user);
+    await this.cacheService.del(CacheKeys.userAuth(user.id));
   }
 }

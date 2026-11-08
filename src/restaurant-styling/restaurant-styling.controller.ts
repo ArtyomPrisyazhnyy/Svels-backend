@@ -16,7 +16,7 @@ export class RestaurantStylingController {
 
   @Get()
   getStyling(@Param('restaurantId', ParseUuidV7Pipe) restaurantId: string) {
-    return this.restaurantStylingService.getByRestaurant(restaurantId);
+    return this.restaurantStylingService.getPublicByRestaurant(restaurantId);
   }
 
   @Patch()
