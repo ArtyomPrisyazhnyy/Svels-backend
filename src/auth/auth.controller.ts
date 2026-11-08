@@ -1,5 +1,9 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { FastifyRequest } from 'fastify';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { ThrottleLimits } from '../common/utils/throttle-limits.util';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -34,5 +38,15 @@ export class AuthController {
   @Throttle(ThrottleLimits.authGoogle)
   loginWithGoogle(@Body() dto: GoogleAuthDto): Promise<AuthResponseDto> {
     return this.authService.loginWithGoogle(dto);
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  logoutAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: FastifyRequest,
+  ): Promise<AuthResponseDto> {
+    return this.authService.logoutAllSessions(user.id, request.ip);
   }
 }

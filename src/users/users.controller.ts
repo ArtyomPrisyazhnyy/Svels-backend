@@ -6,9 +6,13 @@ import {
   HttpStatus,
   Patch,
   Body,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { FastifyRequest } from 'fastify';
+import { AuthService } from '../auth/auth.service';
+import { AuthResponseDto } from '../auth/dto/auth-response.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -20,7 +24,10 @@ import { UsersService } from './users.service';
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly authService: AuthService,
+  ) {}
 
   @Get('me')
   getProfile(
@@ -46,8 +53,9 @@ export class UsersController {
   changePassword(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePasswordDto,
-  ): Promise<UserResponseDto> {
-    return this.usersService.updatePassword(user.id, dto.password);
+    @Req() request: FastifyRequest,
+  ): Promise<AuthResponseDto> {
+    return this.authService.changeMyPassword(user.id, dto.password, request.ip);
   }
 
   /** Удаление собственного гостевого аккаунта (роль USER). */
