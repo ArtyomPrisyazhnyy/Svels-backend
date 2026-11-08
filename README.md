@@ -52,6 +52,17 @@ npm run start:dev      # задаёт NODE_ENV=development
 
 Подробнее для агентов и контрибьюторов: [AGENTS.md](./AGENTS.md).
 
+### Sentry и алерты в Telegram
+
+1. Создайте проект в Sentry и задайте `SENTRY_DSN` (опционально `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`).
+2. **Internal Integration** в Sentry: включите webhooks для **Issue** (action `created`) и **Alert Rule Action** (`event_alert` / `triggered`).
+3. URL webhook: `{API_PUBLIC_URL}/api/internal/sentry-webhook` (например `https://api.svels.by/api/internal/sentry-webhook`).
+4. Client secret интеграции → `SENTRY_WEBHOOK_SECRET` (проверка заголовка `Sentry-Hook-Signature`).
+5. Отдельный Telegram-бот и чат: `ERRORS_TELEGRAM_BOT_TOKEN`, `ERRORS_TELEGRAM_CHAT_ID`.
+6. Правило в Sentry: **новая issue → send a notification via this integration**.
+
+Без `SENTRY_WEBHOOK_SECRET` и Telegram-переменных модуль `alerts` работает в режиме no-op (одно предупреждение в логах).
+
 ## Project setup
 
 ```bash

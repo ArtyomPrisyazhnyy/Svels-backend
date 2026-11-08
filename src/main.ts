@@ -13,6 +13,7 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { CorsOriginService } from './common/cors/cors-origin.service';
 import { resolveTrustProxy } from './config/trust-proxy';
+import { registerSentryWebhookRawBody } from './common/fastify/sentry-webhook-raw-body';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -21,6 +22,8 @@ async function bootstrap() {
       trustProxy: resolveTrustProxy(),
     }),
   );
+
+  registerSentryWebhookRawBody(app.getHttpAdapter().getInstance());
 
   const corsOriginService = app.get(CorsOriginService);
 

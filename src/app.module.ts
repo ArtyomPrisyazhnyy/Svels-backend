@@ -3,7 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { SentryModule } from '@sentry/nestjs/setup';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { InternalErrorExceptionFilter } from './common/filters/internal-error-exception.filter';
+import { SvelsSentryExceptionFilter } from './common/filters/svels-sentry-exception.filter';
+import alertsConfig from './config/alerts.config';
 import appConfig from './config/app.config';
 import { validateEnv } from './config/env.validation';
 import { isDevEndpointsEnabled } from './config/is-dev-endpoints-enabled';
@@ -48,6 +51,7 @@ import { LeadsModule } from './leads/leads.module';
 import { NextRevalidationModule } from './next-revalidation/next-revalidation.module';
 import { DevModule } from './dev/dev.module';
 import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
+import { AlertsModule } from './alerts/alerts.module';
 import { HealthModule } from './health/health.module';
 import { CorsModule } from './common/cors/cors.module';
 import { AppThrottlerModule } from './config/throttler.config';
@@ -71,6 +75,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
         nextSiteConfig,
         otpConfig,
         leadsConfig,
+        alertsConfig,
         bepaidConfig,
         setPasswordConfig,
       ],
@@ -110,6 +115,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
     FavoritesModule,
     GuestAddressesModule,
     LeadsModule,
+    AlertsModule,
     ...(includeDevModule ? [DevModule] : []),
     TelegramBotModule,
   ],
@@ -118,6 +124,19 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    ...(includeSentry
+      ? [
+          {
+            provide: APP_FILTER,
+            useClass: SvelsSentryExceptionFilter,
+          },
+        ]
+      : [
+          {
+            provide: APP_FILTER,
+            useClass: InternalErrorExceptionFilter,
+          },
+        ]),
   ],
 })
 export class AppModule {}
