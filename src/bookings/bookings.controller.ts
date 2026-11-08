@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { Throttle } from '@nestjs/throttler';
@@ -17,6 +18,7 @@ import { RestaurantPermission } from '../common/enums/restaurant-permission.enum
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PrivateRevalidationCacheInterceptor } from '../common/interceptors/private-revalidation-cache.interceptor';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from './dto/booking.dto';
 
@@ -76,6 +78,7 @@ export class BookingsController {
 
   @Get('users/me/bookings')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(PrivateRevalidationCacheInterceptor)
   getMyBookings(@CurrentUser() user: AuthenticatedUser) {
     return this.bookingsService.findByUser(user.id);
   }

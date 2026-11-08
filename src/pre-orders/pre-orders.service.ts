@@ -3,7 +3,8 @@ import { USERS_SERVICE } from '../common/constants/injection-tokens';
 import type { IUsersService } from '../users/interfaces/users-service.interface';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
+import { withIdempotentReadRetry } from '../database/pg-connection-retry.util';
 import {
   GUEST_ADDRESS_LOOKUP,
   MENU_SERVICE,
@@ -257,12 +258,19 @@ export class PreOrdersService {
     return mapPreOrderToResponseDto(order, items, payment, paymentRedirectUrl);
   }
 
-  async findByUser(userId: string): Promise<OrderDto[]> {
-    const orders = await this.preOrderRepository.find({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      take: MY_ORDERS_LIMIT,
-    });
+  async findByUser(userId: string, restaurantId?: string): Promise<OrderDto[]> {
+    const where: FindOptionsWhere<PreOrder> = { userId };
+    if (restaurantId) {
+      where.restaurantId = restaurantId;
+    }
+
+    const orders = await withIdempotentReadRetry(() =>
+      this.preOrderRepository.find({
+        where,
+        order: { createdAt: 'DESC' },
+        take: MY_ORDERS_LIMIT,
+      }),
+    );
 
     if (!orders.length) {
       return [];

@@ -1,8 +1,10 @@
+import './dns-bootstrap';
 import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { UuidV7Subscriber } from './uuid-v7.subscriber';
 import { resolvePostgresConnection } from './pg-connection';
+import { resolvePgPoolExtra } from './pg-pool-extra';
 
 config();
 
@@ -20,9 +22,7 @@ export default new DataSource({
         database: connection.database,
       }),
   ssl: connection.ssl,
-  extra: {
-    connectionTimeoutMillis: 20_000,
-  },
+  extra: resolvePgPoolExtra(),
   entities: ['src/**/*.entity.ts'],
   migrations: ['src/database/migrations/*.ts'],
   subscribers: [UuidV7Subscriber],

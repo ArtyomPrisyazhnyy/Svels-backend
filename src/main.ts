@@ -1,3 +1,4 @@
+import './database/dns-bootstrap';
 import './instrument';
 import { NestFactory } from '@nestjs/core';
 import {
