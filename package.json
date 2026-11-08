@@ -26,6 +26,7 @@
     "migrate:images": "tsx scripts/migrate-images-to-storage.ts",
     "storage:migrate": "tsx scripts/storage-migrate.ts",
     "delete:restaurant-guests": "tsx scripts/delete-restaurant-guests.ts",
+    "iiko:spike": "tsx scripts/iiko-spike.ts",
     "docs:erd:build": "node scripts/erdia-build.mjs",
     "docs:erd:serve": "serve docs/erd -l 3333",
     "docs:erd": "npm run docs:erd:build && npm run docs:erd:serve",
