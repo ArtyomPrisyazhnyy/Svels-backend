@@ -57,6 +57,18 @@ export class DeliveryAddressDto {
   @IsString()
   @MaxLength(300)
   comment?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  lat?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  lng?: number;
 }
 
 export class CreatePreOrderItemDto {
@@ -168,6 +180,9 @@ export class OrderDto {
   requestedAt: string | null;
   comment: string | null;
   cancelReason: string | null;
+  itemsSubtotal: number;
+  deliveryFee: number;
+  deliveryZoneId: string | null;
   totalAmount: number;
   items: OrderItemDto[];
   bookingId: string | null;

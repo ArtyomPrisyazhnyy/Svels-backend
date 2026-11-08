@@ -44,6 +44,7 @@ import { PaymentSettingsModule } from './payment-settings/payment-settings.modul
 import { PaymentsModule } from './payments/payments.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { GuestAddressesModule } from './guest-addresses/guest-addresses.module';
+import { DeliveryZonesModule } from './delivery-zones/delivery-zones.module';
 import { LeadsModule } from './leads/leads.module';
 import { NextRevalidationModule } from './next-revalidation/next-revalidation.module';
 import { DevModule } from './dev/dev.module';
@@ -109,6 +110,7 @@ const includeSentry = Boolean(process.env.SENTRY_DSN?.trim());
     PaymentsModule,
     FavoritesModule,
     GuestAddressesModule,
+    DeliveryZonesModule,
     LeadsModule,
     ...(includeDevModule ? [DevModule] : []),
     TelegramBotModule,

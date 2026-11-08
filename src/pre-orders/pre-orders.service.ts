@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import {
+  DELIVERY_PRICING_HOOK,
   GUEST_ADDRESS_LOOKUP,
   MENU_SERVICE,
 } from '../common/constants/injection-tokens';
@@ -49,6 +50,7 @@ import { throwOrderNumberConflict } from './staff/pre-order-conflict.util';
 import { throwOrderBusinessError } from './utils/order-business-error.util';
 import { SchedulesService } from '../schedules/schedules.service';
 import type { GuestAddressLookup } from './interfaces/guest-address-lookup.interface';
+import type { DeliveryPricingHook } from './interfaces/delivery-pricing-hook.interface';
 
 const MAX_ORDER_NUMBER_RETRIES = 5;
 const MY_ORDERS_LIMIT = 50;
@@ -73,6 +75,8 @@ export class PreOrdersService {
     private readonly schedulesService: SchedulesService,
     @Inject(GUEST_ADDRESS_LOOKUP)
     private readonly guestAddressLookup: GuestAddressLookup,
+    @Inject(DELIVERY_PRICING_HOOK)
+    private readonly deliveryPricingHook: DeliveryPricingHook,
     @Inject(USERS_SERVICE)
     private readonly usersService: IUsersService,
   ) {}
@@ -122,7 +126,7 @@ export class PreOrdersService {
       throwOrderBusinessError('ADDRESS_REQUIRED', 'Укажите адрес доставки');
     }
 
-    const locationId = await this.resolveLocationId(
+    let locationId = await this.resolveLocationId(
       restaurantId,
       dto.fulfillmentType,
       dto.locationId,
@@ -176,11 +180,30 @@ export class PreOrdersService {
       }
     });
 
-    let totalAmount = 0;
+    let itemsSubtotal = 0;
     for (const line of pricedLines) {
-      totalAmount += line.unitPrice * line.quantity;
+      itemsSubtotal += line.unitPrice * line.quantity;
     }
-    totalAmount = roundToKopecks(totalAmount);
+    itemsSubtotal = roundToKopecks(itemsSubtotal);
+
+    let totalAmount = itemsSubtotal;
+    let deliveryFee = 0;
+    let deliveryZoneId: string | null = null;
+    if (dto.fulfillmentType === FulfillmentType.DELIVERY) {
+      const priced = await this.deliveryPricingHook.applyForDeliveryOrder({
+        restaurantId,
+        locationId: dto.locationId ?? null,
+        deliveryAddress,
+        itemsSubtotal,
+      });
+      itemsSubtotal = priced.itemsSubtotal;
+      deliveryFee = priced.deliveryFee;
+      totalAmount = priced.totalAmount;
+      deliveryZoneId = priced.deliveryZoneId;
+      if (priced.fulfillmentLocationId) {
+        locationId = priced.fulfillmentLocationId;
+      }
+    }
 
     const paymentStatus =
       dto.paymentMethod === PaymentMethod.ONLINE
@@ -196,6 +219,9 @@ export class PreOrdersService {
       deliveryAddress,
       locationId,
       requestedAt,
+      itemsSubtotal,
+      deliveryFee,
+      deliveryZoneId,
       totalAmount,
       paymentStatus,
       pricedLines,
@@ -383,6 +409,8 @@ export class PreOrdersService {
       comment: addr.comment?.trim()
         ? sanitizeText(addr.comment.trim())
         : undefined,
+      lat: addr.lat,
+      lng: addr.lng,
     };
   }
 
@@ -425,6 +453,9 @@ export class PreOrdersService {
     deliveryAddress: DeliveryAddressDto | null;
     locationId: string | null;
     requestedAt: Date | null;
+    itemsSubtotal: number;
+    deliveryFee: number;
+    deliveryZoneId: string | null;
     totalAmount: number;
     paymentStatus: OrderPaymentStatus;
     pricedLines: Array<{
@@ -462,6 +493,9 @@ export class PreOrdersService {
             deliveryAddress: params.deliveryAddress,
             locationId: params.locationId,
             requestedAt: params.requestedAt,
+            itemsSubtotal: params.itemsSubtotal,
+            deliveryFee: params.deliveryFee,
+            deliveryZoneId: params.deliveryZoneId,
             totalAmount: params.totalAmount,
             status: PreOrderStatus.NEW,
             statusChangedAt: params.now,

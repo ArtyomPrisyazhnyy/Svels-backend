@@ -7,6 +7,7 @@ import { OrderSettingsModule } from '../order-settings/order-settings.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { SchedulesModule } from '../schedules/schedules.module';
 import { GuestAddressesModule } from '../guest-addresses/guest-addresses.module';
+import { DeliveryZonesModule } from '../delivery-zones/delivery-zones.module';
 import { UsersModule } from '../users/users.module';
 import { RestaurantLocation } from '../restaurants/entities/restaurant-location.entity';
 import { PreOrderItem } from './entities/pre-order-item.entity';
@@ -23,6 +24,7 @@ import { PreOrdersService } from './pre-orders.service';
     PaymentsModule,
     SchedulesModule,
     GuestAddressesModule,
+    DeliveryZonesModule,
     UsersModule,
   ],
   controllers: [PreOrdersController],
