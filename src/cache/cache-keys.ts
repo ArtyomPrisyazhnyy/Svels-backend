@@ -1,5 +1,6 @@
 export const CacheKeys = {
-  menu: (restaurantId: string) => `restaurant:${restaurantId}:menu`,
+  /** v2: в позициях есть imageVariants (старый кэш без поля не отдаём). */
+  menu: (restaurantId: string) => `restaurant:${restaurantId}:menu:v2`,
   schedules: (restaurantId: string) => `restaurant:${restaurantId}:schedules`,
   /** Полная планировка зон/столов/decor для админа (включает невидимые гостям столы). */
   floorPlan: (restaurantId: string) => `restaurant:${restaurantId}:floor-plan`,
