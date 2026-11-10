@@ -25,6 +25,7 @@ export class ImageProcessingProcessor extends WorkerHost {
       buffer,
       keyPrefix: job.data.keyPrefix,
       mimeType: job.data.mimeType,
+      responsiveVariants: job.data.responsiveVariants === true,
     });
   }
 }
