@@ -134,8 +134,32 @@ export class AuthService {
     const updated = await this.usersService.updatePassword(
       user.id,
       dto.password,
+      { reason: 'set_password' },
     );
 
+    return this.buildAuthResponse(updated);
+  }
+
+  async changeMyPassword(
+    userId: string,
+    password: string,
+    clientIp?: string,
+  ): Promise<AuthResponseDto> {
+    const updated = await this.usersService.updatePassword(userId, password, {
+      reason: 'self_service',
+      clientIp,
+    });
+    return this.buildAuthResponse(updated);
+  }
+
+  async logoutAllSessions(
+    userId: string,
+    clientIp?: string,
+  ): Promise<AuthResponseDto> {
+    const updated = await this.usersService.invalidateAllSessions(userId, {
+      reason: 'logout_all',
+      clientIp,
+    });
     return this.buildAuthResponse(updated);
   }
 

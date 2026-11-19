@@ -64,4 +64,68 @@ describe('UsersService platform auth lookup', () => {
     expect(profile?.restaurantId).toBe('restaurant-id');
     expect(profile?.role).toBe(UserRole.RESTAURANT_HALL);
   });
+
+  it('sets passwordChangedAt when password is updated', async () => {
+    const user = {
+      id: 'user-id',
+      email: 'user@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: UserRole.USER,
+      authProvider: 'local',
+      restaurantId: null,
+      createdAt: new Date(),
+      passwordHash: 'old-hash',
+      passwordChangedAt: null,
+    };
+    repository.findOne.mockResolvedValue(user);
+    repository.save.mockImplementation((entity: typeof user) =>
+      Promise.resolve(entity),
+    );
+
+    await service.updatePassword('user-id', 'new-password-12', {
+      reason: 'self_service',
+      clientIp: '127.0.0.1',
+    });
+
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        passwordChangedAt: expect.any(Date) as Date,
+      }),
+    );
+    const saveCalls = repository.save.mock.calls as Array<[typeof user]>;
+    const savedUser = saveCalls[0][0];
+    expect(savedUser.passwordHash).not.toBe('old-hash');
+    expect(savedUser.passwordHash).not.toBe('new-password-12');
+  });
+
+  it('bumps passwordChangedAt on invalidateAllSessions', async () => {
+    const user = {
+      id: 'user-id',
+      email: 'user@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: UserRole.USER,
+      authProvider: 'local',
+      restaurantId: null,
+      createdAt: new Date(),
+      passwordHash: 'hash',
+      passwordChangedAt: null,
+    };
+    repository.findOne.mockResolvedValue(user);
+    repository.save.mockImplementation((entity: typeof user) =>
+      Promise.resolve(entity),
+    );
+
+    await service.invalidateAllSessions('user-id', {
+      reason: 'logout_all',
+      clientIp: '127.0.0.1',
+    });
+
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        passwordChangedAt: expect.any(Date) as Date,
+      }),
+    );
+  });
 });

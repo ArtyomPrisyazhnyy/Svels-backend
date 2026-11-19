@@ -11,6 +11,7 @@ interface JwtPayload {
   email: string;
   role: string;
   restaurantId?: string;
+  iat?: number;
 }
 
 @Injectable()
@@ -28,8 +29,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    const user = await this.usersService.findById(payload.sub);
+    const user = await this.usersService.findForJwtValidation(payload.sub);
     if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    if (
+      user.passwordChangedAt &&
+      payload.iat !== undefined &&
+      payload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)
+    ) {
       throw new UnauthorizedException();
     }
 
@@ -37,7 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: user.id,
       email: user.email,
       role: user.role,
-      restaurantId: user.restaurantId,
+      restaurantId: user.restaurantId ?? undefined,
     };
   }
 }

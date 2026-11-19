@@ -27,6 +27,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   passwordHash: string | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  passwordChangedAt: Date | null;
+
   @Column()
   firstName: string;
 
