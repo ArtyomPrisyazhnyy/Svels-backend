@@ -51,9 +51,10 @@ describe('Orders flow (e2e)', () => {
   };
 
   beforeAll(async () => {
-    app = await createE2eApp((builder) =>
-      builder.overrideProvider(BePaidApiClient).useValue(bePaidMock),
-    );
+    app = await createE2eApp({
+      configureModule: (builder) =>
+        builder.overrideProvider(BePaidApiClient).useValue(bePaidMock),
+    });
 
     const dataSource = app.get(DataSource);
     const seeded = await seedRestaurantBase(dataSource, runId, {
