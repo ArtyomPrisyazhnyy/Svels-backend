@@ -20,6 +20,10 @@ import { OrderPaymentStatus } from '../../common/enums/order-payment-status.enum
 import { PaymentMethod } from '../../common/enums/payment-method.enum';
 import { PreOrderStatus } from '../../common/enums/pre-order-status.enum';
 import type { PaymentResponseDto } from '../../payments/dto/payment.dto';
+import type {
+  CartGiftReward,
+  CartLoyaltyDiscount,
+} from '../pricing/cart-quote.util';
 import type { PreOrderItemModifierSnapshot } from '../types/pre-order-item-modifier.types';
 
 export class DeliveryAddressDto {
@@ -168,6 +172,14 @@ export class OrderDto {
   requestedAt: string | null;
   comment: string | null;
   cancelReason: string | null;
+  /** Сумма позиций до скидки огонька. У заказов до скидки совпадает с totalAmount, если колонка была 0. */
+  subtotalAmount: number;
+  loyaltyDiscountAmount: number;
+  loyaltyLevelId: string | null;
+  loyaltyLevelName: string | null;
+  loyaltyDiscount: CartLoyaltyDiscount | null;
+  /** Имена подарков уровня. Цену не меняют. Видны и гостю, и персоналу. */
+  giftRewards: CartGiftReward[];
   totalAmount: number;
   items: OrderItemDto[];
   bookingId: string | null;

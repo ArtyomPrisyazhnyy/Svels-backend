@@ -13,6 +13,7 @@ import { OrderPaymentStatus } from '../../common/enums/order-payment-status.enum
 import { PaymentMethod } from '../../common/enums/payment-method.enum';
 import { PreOrderStatus } from '../../common/enums/pre-order-status.enum';
 import type { DeliveryAddressDto } from '../dto/pre-order.dto';
+import type { LoyaltyRewardSnapshot } from '../pricing/cart-quote.util';
 
 @Entity('pre_orders')
 @Index(
@@ -101,6 +102,24 @@ export class PreOrder {
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   totalAmount: number;
+
+  /** Сумма позиций до скидки уровня. У старых заказов 0. */
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  subtotalAmount: number;
+
+  /** Вычет скидки огонька. У старых заказов 0. */
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  loyaltyDiscountAmount: number;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  loyaltyLevelName: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  loyaltyLevelId: string | null;
+
+  /** Снимок применённой скидки и имён подарков на момент заказа. */
+  @Column({ type: 'jsonb', nullable: true })
+  loyaltyRewardSnapshot: LoyaltyRewardSnapshot | null;
 
   @Column({ type: 'text', nullable: true })
   comment: string | null;

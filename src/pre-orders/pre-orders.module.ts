@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ORDERS_STAFF_SERVICE } from '../common/constants/injection-tokens';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
+import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { MenuModule } from '../menu/menu.module';
 import { OrderSettingsModule } from '../order-settings/order-settings.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -19,6 +20,7 @@ import { PreOrdersService } from './pre-orders.service';
   imports: [
     TypeOrmModule.forFeature([PreOrder, PreOrderItem, RestaurantLocation]),
     MenuModule,
+    LoyaltyModule,
     OrderSettingsModule,
     PaymentsModule,
     SchedulesModule,
