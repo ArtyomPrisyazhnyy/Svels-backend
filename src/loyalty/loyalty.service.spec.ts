@@ -154,4 +154,31 @@ describe('LoyaltyService', () => {
       }),
     );
   });
+
+  it('loads settings and the guest balance for cart pricing', async () => {
+    const stored = Object.assign(new GuestLoyaltyBalance(), {
+      restaurantId: RESTAURANT_ID,
+      userId: USER_ID,
+      visits: 2,
+      totalVisits: 2,
+      lastVisitAt: NOW,
+    });
+    const findOne = jest.fn().mockResolvedValue(stored);
+    dataSource.getRepository.mockReturnValue({ findOne });
+    const settings = {
+      restaurantId: RESTAURANT_ID,
+      flameDisplayEnabled: true,
+      flameRewardsEnabled: true,
+      flameExpireDays: 14,
+      flameLevels: [],
+    };
+    settingsService.getByRestaurant.mockResolvedValue(settings);
+
+    const result = await service.loadForCart(RESTAURANT_ID, USER_ID);
+
+    expect(result).toEqual({ settings, balance: stored });
+    expect(findOne).toHaveBeenCalledWith({
+      where: { restaurantId: RESTAURANT_ID, userId: USER_ID },
+    });
+  });
 });

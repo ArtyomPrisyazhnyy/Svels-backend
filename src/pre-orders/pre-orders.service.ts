@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import {
   GUEST_ADDRESS_LOOKUP,
+  LOYALTY_ORDER_PRICING,
   MENU_SERVICE,
 } from '../common/constants/injection-tokens';
 import { FulfillmentType } from '../common/enums/fulfillment-type.enum';
@@ -14,12 +15,14 @@ import { PaymentMethod } from '../common/enums/payment-method.enum';
 import { PreOrderStatus } from '../common/enums/pre-order-status.enum';
 import { normalizePhone } from '../common/utils/normalize-phone.util';
 import { sanitizeText } from '../common/utils/sanitize.util';
+import type { ILoyaltyOrderPricing } from '../loyalty/interfaces/loyalty-order-pricing.interface';
 import type { MenuService } from '../menu/menu.service';
 import { OrderSettingsService } from '../order-settings/order-settings.service';
 import type { PaymentResponseDto } from '../payments/dto/payment.dto';
 import { PaymentsService } from '../payments/payments.service';
 import { RestaurantLocation } from '../restaurants/entities/restaurant-location.entity';
 import { CreatePreOrderDto } from './dto/create-pre-order.dto';
+import { QuotePreOrderDto } from './dto/quote-pre-order.dto';
 import {
   DeliveryAddressDto,
   OrderDto,
@@ -41,10 +44,11 @@ import {
 } from './pricing/requested-at.util';
 import { isRestaurantOpenAt } from './pricing/minsk-time.util';
 import {
-  MenuItemPricingError,
-  resolveMenuItemLine,
-} from './pricing/menu-item-line.util';
-import { roundToKopecks } from './pricing/round-money.util';
+  priceCart,
+  type CartQuote,
+  type CartQuoteResponse,
+} from './pricing/cart-quote.util';
+import { MenuItemPricingError } from './pricing/menu-item-line.util';
 import { throwOrderNumberConflict } from './staff/pre-order-conflict.util';
 import { throwOrderBusinessError } from './utils/order-business-error.util';
 import { SchedulesService } from '../schedules/schedules.service';
@@ -75,7 +79,28 @@ export class PreOrdersService {
     private readonly guestAddressLookup: GuestAddressLookup,
     @Inject(USERS_SERVICE)
     private readonly usersService: IUsersService,
+    @Inject(LOYALTY_ORDER_PRICING)
+    private readonly loyaltyOrderPricing: ILoyaltyOrderPricing,
   ) {}
+
+  async quote(
+    restaurantId: string,
+    userId: string | null,
+    dto: QuotePreOrderDto,
+  ): Promise<CartQuoteResponse> {
+    const quote = await this.priceForRestaurant(
+      restaurantId,
+      userId,
+      dto.items,
+    );
+    return {
+      lines: quote.lines,
+      subtotal: quote.subtotal,
+      loyaltyDiscount: quote.loyaltyDiscount,
+      giftRewards: quote.giftRewards,
+      total: quote.total,
+    };
+  }
 
   async create(
     restaurantId: string,
@@ -149,43 +174,17 @@ export class PreOrdersService {
       );
     }
 
-    const menu = await this.menuService.getMenuByRestaurant(restaurantId);
-    const menuItemsById = new Map(
-      menu.categories.flatMap((c) => c.items).map((item) => [item.id, item]),
+    const quote = await this.priceForRestaurant(
+      restaurantId,
+      userId,
+      dto.items,
     );
 
-    const pricedLines = dto.items.map((item) => {
-      try {
-        return {
-          ...item,
-          ...resolveMenuItemLine(
-            menuItemsById.get(item.menuItemId),
-            item.modifierSelections,
-          ),
-        };
-      } catch (error) {
-        if (error instanceof MenuItemPricingError) {
-          throwOrderBusinessError(
-            error.code,
-            error.code === 'ITEM_UNAVAILABLE'
-              ? 'Позиция меню недоступна'
-              : 'Некорректные модификаторы',
-          );
-        }
-        throw error;
-      }
-    });
-
-    let totalAmount = 0;
-    for (const line of pricedLines) {
-      totalAmount += line.unitPrice * line.quantity;
-    }
-    totalAmount = roundToKopecks(totalAmount);
-
-    const paymentStatus =
-      dto.paymentMethod === PaymentMethod.ONLINE
-        ? OrderPaymentStatus.PENDING
-        : OrderPaymentStatus.NOT_REQUIRED;
+    const payableOnline =
+      dto.paymentMethod === PaymentMethod.ONLINE && quote.total > 0;
+    const paymentStatus = payableOnline
+      ? OrderPaymentStatus.PENDING
+      : OrderPaymentStatus.NOT_REQUIRED;
 
     const order = await this.saveOrderWithRetry({
       restaurantId,
@@ -196,16 +195,15 @@ export class PreOrdersService {
       deliveryAddress,
       locationId,
       requestedAt,
-      totalAmount,
+      quote,
       paymentStatus,
-      pricedLines,
       now,
     });
 
     let payment: PaymentResponseDto | null = null;
     let paymentRedirectUrl: string | null = null;
 
-    if (dto.paymentMethod === PaymentMethod.ONLINE) {
+    if (payableOnline) {
       payment = await this.paymentsService.startOnlineCheckout({
         restaurantId,
         preOrderId: order.id,
@@ -425,15 +423,8 @@ export class PreOrdersService {
     deliveryAddress: DeliveryAddressDto | null;
     locationId: string | null;
     requestedAt: Date | null;
-    totalAmount: number;
+    quote: CartQuote;
     paymentStatus: OrderPaymentStatus;
-    pricedLines: Array<{
-      menuItemId: string;
-      quantity: number;
-      unitPrice: number;
-      name: string;
-      modifiers: PreOrderItem['modifiers'];
-    }>;
     now: Date;
   }): Promise<PreOrder> {
     for (let attempt = 0; attempt < MAX_ORDER_NUMBER_RETRIES; attempt += 1) {
@@ -462,7 +453,12 @@ export class PreOrdersService {
             deliveryAddress: params.deliveryAddress,
             locationId: params.locationId,
             requestedAt: params.requestedAt,
-            totalAmount: params.totalAmount,
+            subtotalAmount: params.quote.subtotal,
+            loyaltyDiscountAmount: params.quote.loyaltyDiscount?.amount ?? 0,
+            loyaltyLevelId: params.quote.loyaltyLevelId,
+            loyaltyLevelName: params.quote.loyaltyLevelName,
+            loyaltyRewardSnapshot: params.quote.loyaltyRewardSnapshot,
+            totalAmount: params.quote.total,
             status: PreOrderStatus.NEW,
             statusChangedAt: params.now,
             comment: params.dto.comment?.trim()
@@ -473,7 +469,7 @@ export class PreOrdersService {
 
           const savedOrder = await manager.save(preOrder);
 
-          for (const line of params.pricedLines) {
+          for (const line of params.quote.lines) {
             const orderItem = manager.create(PreOrderItem, {
               preOrderId: savedOrder.id,
               menuItemId: line.menuItemId,
@@ -525,6 +521,50 @@ export class PreOrdersService {
       'PHONE_REQUIRED',
       'Укажите номер телефона для оформления заказа',
     );
+  }
+
+  private async priceForRestaurant(
+    restaurantId: string,
+    userId: string | null,
+    items: Array<{
+      menuItemId: string;
+      quantity: number;
+      modifierSelections?: Record<string, string[]>;
+    }>,
+  ): Promise<CartQuote> {
+    const menu = await this.menuService.getMenuByRestaurant(restaurantId);
+    const menuItemsById = new Map(
+      menu.categories
+        .flatMap((category) => category.items)
+        .map((item) => [item.id, item]),
+    );
+    const loyalty = userId
+      ? await this.loyaltyOrderPricing.loadForCart(restaurantId, userId)
+      : null;
+
+    try {
+      return priceCart({
+        userId,
+        items: items.map((item) => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          modifierSelections: item.modifierSelections,
+        })),
+        menuItemsById,
+        loyalty,
+        now: new Date(),
+      });
+    } catch (error) {
+      if (error instanceof MenuItemPricingError) {
+        throwOrderBusinessError(
+          error.code,
+          error.code === 'ITEM_UNAVAILABLE'
+            ? 'Позиция меню недоступна'
+            : 'Некорректные модификаторы',
+        );
+      }
+      throw error;
+    }
   }
 }
 

@@ -6,6 +6,10 @@ import { buildLoyaltyBalance } from './loyalty-balance.util';
 import type { LoyaltyBalanceResponseDto } from './dto/loyalty-balance.dto';
 import { GuestLoyaltyBalance } from './entities/guest-loyalty-balance.entity';
 import { LoyaltyVisit } from './entities/loyalty-visit.entity';
+import type {
+  ILoyaltyOrderPricing,
+  LoyaltyCartContext,
+} from './interfaces/loyalty-order-pricing.interface';
 
 const DAY_MS = 86_400_000;
 
@@ -18,7 +22,7 @@ export interface RecordVisitParams {
 }
 
 @Injectable()
-export class LoyaltyService {
+export class LoyaltyService implements ILoyaltyOrderPricing {
   constructor(
     private readonly dataSource: DataSource,
     private readonly loyaltySettingsService: LoyaltySettingsService,
@@ -81,5 +85,17 @@ export class LoyaltyService {
       .findOne({ where: { restaurantId, userId } });
 
     return { ...buildLoyaltyBalance(settings, balance, now), userId };
+  }
+
+  async loadForCart(
+    restaurantId: string,
+    userId: string,
+  ): Promise<LoyaltyCartContext> {
+    const settings =
+      await this.loyaltySettingsService.getByRestaurant(restaurantId);
+    const balance = await this.dataSource
+      .getRepository(GuestLoyaltyBalance)
+      .findOne({ where: { restaurantId, userId } });
+    return { settings, balance };
   }
 }

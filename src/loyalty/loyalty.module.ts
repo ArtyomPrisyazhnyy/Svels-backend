@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LOYALTY_ORDER_PRICING } from '../common/constants/injection-tokens';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { LoyaltySettingsModule } from '../loyalty-settings/loyalty-settings.module';
 import { GuestLoyaltyBalance } from './entities/guest-loyalty-balance.entity';
@@ -18,6 +19,8 @@ import { LoyaltyService } from './loyalty.service';
     LoyaltyService,
     LoyaltyOrderEventsListener,
     RestaurantAccessGuard,
+    { provide: LOYALTY_ORDER_PRICING, useExisting: LoyaltyService },
   ],
+  exports: [LOYALTY_ORDER_PRICING],
 })
 export class LoyaltyModule {}
