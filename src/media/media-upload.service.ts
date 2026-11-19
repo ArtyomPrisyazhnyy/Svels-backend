@@ -15,6 +15,7 @@ import {
   type ImageProcessJobPayload,
   type ImageProcessJobResult,
 } from './media.constants';
+import type { PublicImageVariants } from './responsive-image-variants';
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -22,6 +23,8 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 export interface UploadedImageUrls {
   url: string;
   webpUrl: string;
+  /** null для логотипа и баннеров. Для меню — объект (возможно пустой). */
+  imageVariants: PublicImageVariants | null;
 }
 
 @Injectable()
@@ -45,7 +48,9 @@ export class MediaUploadService {
     buffer: Buffer,
     mimeType: string,
   ): Promise<UploadedImageUrls> {
-    return this.upload(buffer, mimeType, `menu/${restaurantId}`);
+    return this.upload(buffer, mimeType, `menu/${restaurantId}`, {
+      responsiveVariants: true,
+    });
   }
 
   async uploadLogo(
@@ -77,10 +82,12 @@ export class MediaUploadService {
     buffer: Buffer,
     mimeType: string,
     folder: string,
+    options: { responsiveVariants?: boolean } = {},
   ): Promise<UploadedImageUrls> {
     this.validateImageBuffer(buffer, mimeType);
 
     const keyPrefix = `${folder}/${generateUuidV7()}`;
+    const responsiveVariants = options.responsiveVariants === true;
     const workerInline = this.configService.get<boolean>(
       'storage.image.workerInline',
       true,
@@ -98,17 +105,28 @@ export class MediaUploadService {
         buffer,
         keyPrefix,
         mimeType,
+        responsiveVariants,
       });
-      return { url: result.fallbackUrl, webpUrl: result.webpUrl };
+      return {
+        url: result.fallbackUrl,
+        webpUrl: result.webpUrl,
+        imageVariants: result.imageVariants,
+      };
     }
 
-    return this.enqueueAndWait({ buffer, keyPrefix, mimeType });
+    return this.enqueueAndWait({
+      buffer,
+      keyPrefix,
+      mimeType,
+      responsiveVariants,
+    });
   }
 
   private async enqueueAndWait(params: {
     buffer: Buffer;
     keyPrefix: string;
     mimeType: string;
+    responsiveVariants: boolean;
   }): Promise<UploadedImageUrls> {
     if (!this.imageQueue) {
       throw new ServiceUnavailableException(
@@ -126,6 +144,7 @@ export class MediaUploadService {
         bufferBase64: params.buffer.toString('base64'),
         keyPrefix: params.keyPrefix,
         mimeType: params.mimeType,
+        responsiveVariants: params.responsiveVariants,
       },
       {
         attempts: 2,
@@ -138,7 +157,11 @@ export class MediaUploadService {
     try {
       const events = this.getQueueEvents();
       const result = await job.waitUntilFinished(events, timeoutMs);
-      return { url: result.fallbackUrl, webpUrl: result.webpUrl };
+      return {
+        url: result.fallbackUrl,
+        webpUrl: result.webpUrl,
+        imageVariants: result.imageVariants ?? null,
+      };
     } catch (error) {
       this.logger.error(
         `Image job ${job.id} failed: ${error instanceof Error ? error.message : String(error)}`,

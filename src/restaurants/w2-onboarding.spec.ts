@@ -283,6 +283,7 @@ describe('W2-B-ONB onboarding', () => {
       itemRepository as never,
       cacheService as never,
       nextRevalidationService as never,
+      { resolveKeyFromUrl: jest.fn(), deleteObject: jest.fn() } as never,
     );
 
     beforeEach(() => {

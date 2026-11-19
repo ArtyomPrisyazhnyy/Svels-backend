@@ -22,12 +22,17 @@ describe('MenuService categories', () => {
   const nextRevalidationService = {
     revalidateRestaurantPublicPage: jest.fn().mockResolvedValue(undefined),
   };
+  const storageService = {
+    resolveKeyFromUrl: jest.fn(),
+    deleteObject: jest.fn(),
+  };
 
   const service = new MenuService(
     categoryRepository as never,
     itemRepository as never,
     cacheService as never,
     nextRevalidationService as never,
+    storageService as never,
   );
 
   beforeEach(() => {

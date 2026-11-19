@@ -7,6 +7,7 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { PublicImageVariants } from '../../media/responsive-image-variants';
 import type {
   MenuItemNutrition,
   MenuModifierGroup,
@@ -63,6 +64,13 @@ export class MenuItem {
   /** WebP-вариант обложки; null — показывать только imageUrl. */
   @Column({ type: 'varchar', nullable: true })
   imageWebpUrl: string | null;
+
+  /**
+   * Адаптивные варианты обложки (sm/md/lg). null — ещё не сгенерированы.
+   * Обложка imageUrl / imageWebpUrl сохраняется отдельно.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  imageVariants: PublicImageVariants | null;
 
   /**
    * Дополнительные фотографии позиции (галерея в модальном окне товара).

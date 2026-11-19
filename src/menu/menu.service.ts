@@ -8,7 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CacheKeys } from '../cache/cache-keys';
 import { CacheService } from '../cache/cache.service';
+import { toPublicImageVariants } from '../media/responsive-image-variants';
 import { NextRevalidationService } from '../next-revalidation/next-revalidation.service';
+import { StorageService } from '../storage/storage.service';
 import { sanitizeText } from '../common/utils/sanitize.util';
 import {
   CreateMenuCategoryDto,
@@ -21,6 +23,7 @@ import {
 } from './dto/menu-category.dto';
 import { MenuCategory } from './entities/menu-category.entity';
 import { MenuItem } from './entities/menu-item.entity';
+import { listCoverAssetUrls } from './image-asset-urls';
 import {
   normalizeModifierGroups,
   normalizeNutrition,
@@ -39,6 +42,7 @@ export class MenuService {
     private readonly itemRepository: Repository<MenuItem>,
     private readonly cacheService: CacheService,
     private readonly nextRevalidationService: NextRevalidationService,
+    private readonly storageService: StorageService,
   ) {}
 
   async getMenuByRestaurant(restaurantId: string): Promise<MenuWithCategories> {
@@ -61,7 +65,9 @@ export class MenuService {
     const result: MenuWithCategories = {
       categories: categories.map((category) => ({
         ...category,
-        items: items.filter((item) => item.categoryId === category.id),
+        items: items
+          .filter((item) => item.categoryId === category.id)
+          .map((item) => this.presentItem(item)),
       })),
     };
 
@@ -194,6 +200,7 @@ export class MenuService {
       isAvailable: dto.isAvailable ?? true,
       imageUrl: dto.imageUrl,
       imageWebpUrl: dto.imageWebpUrl ?? null,
+      imageVariants: toPublicImageVariants(dto.imageVariants ?? null),
       galleryUrls: dto.galleryUrls ?? [],
       galleryWebpUrls: dto.galleryWebpUrls ?? [],
       modifierGroups: normalizeModifierGroups(dto.modifierGroups),
@@ -201,7 +208,7 @@ export class MenuService {
 
     const saved = await this.itemRepository.save(item);
     await this.invalidateCache(restaurantId);
-    return saved;
+    return this.presentItem(saved);
   }
 
   async updateItem(
@@ -249,8 +256,7 @@ export class MenuService {
       );
     }
     if (dto.isAvailable !== undefined) item.isAvailable = dto.isAvailable;
-    if (dto.imageUrl !== undefined) item.imageUrl = dto.imageUrl;
-    if (dto.imageWebpUrl !== undefined) item.imageWebpUrl = dto.imageWebpUrl;
+    const previousCoverUrls = this.applyCoverUpdate(item, dto);
     if (dto.galleryUrls !== undefined) item.galleryUrls = dto.galleryUrls;
     if (dto.galleryWebpUrls !== undefined)
       item.galleryWebpUrls = dto.galleryWebpUrls;
@@ -259,18 +265,23 @@ export class MenuService {
     }
 
     const saved = await this.itemRepository.save(item);
+    await this.deleteRemovedCoverAssets(
+      previousCoverUrls,
+      listCoverAssetUrls(saved),
+    );
     await this.invalidateCache(restaurantId);
-    return saved;
+    return this.presentItem(saved);
   }
 
   async deleteItem(restaurantId: string, itemId: string): Promise<void> {
-    const result = await this.itemRepository.delete({
-      id: itemId,
-      restaurantId,
+    const item = await this.itemRepository.findOne({
+      where: { id: itemId, restaurantId },
     });
-    if (!result.affected) {
+    if (!item) {
       throw new NotFoundException('Позиция меню не найдена');
     }
+    await this.itemRepository.delete({ id: itemId, restaurantId });
+    await this.deleteStoredUrls(listCoverAssetUrls(item));
     await this.invalidateCache(restaurantId);
   }
 
@@ -286,6 +297,54 @@ export class MenuService {
     if (!item) {
       throw new NotFoundException('Позиция меню не найдена');
     }
+  }
+
+  private applyCoverUpdate(item: MenuItem, dto: UpdateMenuItemDto): string[] {
+    const previousUrls = listCoverAssetUrls(item);
+    const previousImageUrl = item.imageUrl;
+    if (dto.imageUrl !== undefined) {
+      item.imageUrl = dto.imageUrl;
+    }
+    if (dto.imageWebpUrl !== undefined) {
+      item.imageWebpUrl = dto.imageWebpUrl;
+    }
+    if (dto.imageVariants !== undefined) {
+      item.imageVariants = toPublicImageVariants(dto.imageVariants);
+    } else if (
+      dto.imageUrl !== undefined &&
+      dto.imageUrl !== previousImageUrl
+    ) {
+      item.imageVariants = null;
+    }
+    return previousUrls;
+  }
+
+  private presentItem(item: MenuItem): MenuItem {
+    return {
+      ...item,
+      imageVariants: toPublicImageVariants(item.imageVariants),
+    };
+  }
+
+  private async deleteRemovedCoverAssets(
+    previous: string[],
+    next: string[],
+  ): Promise<void> {
+    const keep = new Set(next);
+    await this.deleteStoredUrls(previous.filter((url) => !keep.has(url)));
+  }
+
+  private async deleteStoredUrls(urls: string[]): Promise<void> {
+    const keys = new Set<string>();
+    for (const url of urls) {
+      const key = this.storageService.resolveKeyFromUrl(url);
+      if (key) {
+        keys.add(key);
+      }
+    }
+    await Promise.all(
+      [...keys].map((key) => this.storageService.deleteObject(key)),
+    );
   }
 
   private normalizeOldPrice(

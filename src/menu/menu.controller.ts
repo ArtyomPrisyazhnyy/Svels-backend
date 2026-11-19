@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { MediaUploadService } from '../media/media-upload.service';
+import { toMenuImageUploadResponse } from './image-asset-urls';
 import {
   CreateMenuCategoryDto,
   CreateMenuItemDto,
@@ -62,10 +63,7 @@ export class MenuController {
       file.mimetype,
     );
 
-    return {
-      imageUrl: uploaded.url,
-      imageWebpUrl: uploaded.webpUrl,
-    };
+    return toMenuImageUploadResponse(uploaded);
   }
 
   @Post('categories')

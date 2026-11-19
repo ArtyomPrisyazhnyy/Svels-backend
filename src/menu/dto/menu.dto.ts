@@ -16,6 +16,7 @@ import {
 } from 'class-validator';
 import { IsUuidV7 } from '../../common/decorators/is-uuid-v7.decorator';
 import { ModifierSelectionType } from '../../common/enums/modifier-selection-type.enum';
+import { ImageVariantsDto } from '../../media/image-variants.dto';
 
 export class CreateMenuCategoryDto {
   @IsString()
@@ -136,6 +137,11 @@ export class CreateMenuItemDto {
   imageWebpUrl?: string | null;
 
   @IsOptional()
+  @ValidateNested()
+  @Type(() => ImageVariantsDto)
+  imageVariants?: ImageVariantsDto | null;
+
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(9)
   @IsString({ each: true })
@@ -207,6 +213,11 @@ export class UpdateMenuItemDto {
   @IsString()
   @MinLength(1)
   imageWebpUrl?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ImageVariantsDto)
+  imageVariants?: ImageVariantsDto | null;
 
   @IsOptional()
   @IsArray()

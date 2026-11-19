@@ -1,3 +1,5 @@
+import type { PublicImageVariants } from './responsive-image-variants';
+
 export const IMAGE_PROCESSING_QUEUE = 'image-processing';
 
 export interface ImageProcessJobPayload {
@@ -7,6 +9,8 @@ export interface ImageProcessJobPayload {
   keyPrefix: string;
   /** Исходный MIME (jpeg/png/webp). */
   mimeType: string;
+  /** Варианты sm/md/lg. Для логотипа и баннеров — false. */
+  responsiveVariants?: boolean;
 }
 
 export interface ImageProcessJobResult {
@@ -14,4 +18,6 @@ export interface ImageProcessJobResult {
   webpUrl: string;
   fallbackKey: string;
   webpKey: string;
+  /** null — варианты не запрашивались. {} — запрошены, но исходник слишком узкий. */
+  imageVariants: PublicImageVariants | null;
 }

@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import sharp from 'sharp';
+import {
+  renderResponsiveVariants,
+  type RenderedImageVariants,
+} from './responsive-image-variants';
 
 export interface ConvertedImageVariants {
   fallbackBuffer: Buffer;
@@ -68,5 +72,15 @@ export class ImageConversionService {
       fallbackExtension: preferPng ? '.png' : '.jpg',
       webpBuffer,
     };
+  }
+
+  /**
+   * sm/md/lg: WebP + JPEG. Размер не создаётся, если исходник уже целевой ширины.
+   */
+  buildResponsiveVariants(buffer: Buffer): Promise<RenderedImageVariants> {
+    return renderResponsiveVariants(buffer, {
+      jpegQuality: this.jpegQuality,
+      webpQuality: this.webpQuality,
+    });
   }
 }

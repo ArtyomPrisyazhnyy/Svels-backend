@@ -24,6 +24,7 @@ function makeMenuItem(
     isAvailable: true,
     imageUrl: 'x',
     imageWebpUrl: null,
+    imageVariants: null,
     galleryUrls: [],
     galleryWebpUrls: [],
     modifierGroups: [],
