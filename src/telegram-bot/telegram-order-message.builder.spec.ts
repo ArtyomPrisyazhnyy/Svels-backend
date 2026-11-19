@@ -31,6 +31,12 @@ function baseOrder(overrides: Partial<OrderDto> = {}): OrderDto {
     requestedAt: '2026-10-09T10:30:00.000Z',
     comment: 'Без лука',
     cancelReason: null,
+    subtotalAmount: 25.5,
+    loyaltyDiscountAmount: 0,
+    loyaltyLevelId: null,
+    loyaltyLevelName: null,
+    loyaltyDiscount: null,
+    giftRewards: [],
     totalAmount: 25.5,
     items: [
       {

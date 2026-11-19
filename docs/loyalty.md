@@ -15,4 +15,4 @@
 
 Форма ответа (`LoyaltyBalanceResponseDto`): `restaurantId`, `userId`, `enabled`, `rewardsEnabled`, `visits`, `totalVisits`, `lastVisitAt`, `expiresAt`, `currentLevel`, `nextLevel` (с `visitsLeft`), `availableRewards`. Даты — ISO-строки. Без записи баланса все счётчики равны нулю, даты равны `null`.
 
-Применение наград в корзине и скидки в эту часть не входят.
+Скидка уровня применяется при расчёте корзины и создании предзаказа (`priceCart`): только для авторизованного гостя и только если `flameRewardsEnabled`. Уровень считается той же функцией, что и баланс (`buildLoyaltyBalance`). Если на уровне есть и процент, и фикс, гости получают одну скидку — с большим вычетом в копейках; при равенстве берётся процент. Фикс не делает итог отрицательным. Подарки (`free_menu_item`, `custom`) цену не меняют. Котировка: `POST /restaurants/:restaurantId/pre-orders/quote`.

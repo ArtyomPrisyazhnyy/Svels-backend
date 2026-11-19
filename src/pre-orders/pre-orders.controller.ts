@@ -8,16 +8,19 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { StaffRoles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { RestaurantPermission } from '../common/enums/restaurant-permission.enum';
 import type { UserRole } from '../common/enums/user-role.enum';
 import type { AuthenticatedUser } from '../common/interfaces/authenticated-user.interface';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
 import { RestaurantAccessGuard } from '../common/guards/restaurant-access.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { ParseUuidV7Pipe } from '../common/pipes/parse-uuid-v7.pipe';
 import { CreatePreOrderDto } from './dto/create-pre-order.dto';
+import { QuotePreOrderDto } from './dto/quote-pre-order.dto';
 import { StaffChangeOrderStatusDto } from './dto/staff-change-order-status.dto';
 import { StaffListPreOrdersQueryDto } from './dto/staff-list-pre-orders-query.dto';
 import { PreOrdersStaffService } from './pre-orders-staff.service';
@@ -29,6 +32,17 @@ export class PreOrdersController {
     private readonly preOrdersService: PreOrdersService,
     private readonly preOrdersStaffService: PreOrdersStaffService,
   ) {}
+
+  @Post('restaurants/:restaurantId/pre-orders/quote')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  quote(
+    @Param('restaurantId', ParseUuidV7Pipe) restaurantId: string,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Body() dto: QuotePreOrderDto,
+  ) {
+    return this.preOrdersService.quote(restaurantId, user?.id ?? null, dto);
+  }
 
   @Post('restaurants/:restaurantId/pre-orders')
   @UseGuards(JwtAuthGuard)

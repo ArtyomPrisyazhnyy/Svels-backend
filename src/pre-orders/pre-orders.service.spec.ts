@@ -14,6 +14,7 @@ jest.mock('./pricing/minsk-time.util', () => {
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FulfillmentType } from '../common/enums/fulfillment-type.enum';
+import { LoyaltyRewardType } from '../common/enums/loyalty.enum';
 import { PaymentMethod } from '../common/enums/payment-method.enum';
 import { CreatePreOrderDto } from './dto/create-pre-order.dto';
 import * as minsTime from './pricing/minsk-time.util';
@@ -32,7 +33,12 @@ describe('PreOrdersService.create validations', () => {
     getByRestaurant: jest.fn(),
   };
   const dataSource = { transaction: jest.fn() };
-  const paymentsService = {};
+  const paymentsService = {
+    startOnlineCheckout: jest.fn(),
+  };
+  const loyaltyOrderPricing = {
+    loadForCart: jest.fn(),
+  };
   const emitMock = jest.fn();
   const eventEmitter = { emit: emitMock } as unknown as EventEmitter2;
   const schedulesService = {
@@ -74,14 +80,36 @@ describe('PreOrdersService.create validations', () => {
     schedulesService as never,
     guestAddressLookup,
     usersService as never,
+    loyaltyOrderPricing,
   );
 
   const restaurantId = '019efb61-5d8e-7058-b838-6f2696cb4204';
+
+  const openSettings = {
+    ordersPaused: false,
+    fulfillmentDelivery: true,
+    fulfillmentTakeaway: true,
+    fulfillmentDineIn: true,
+    paymentCash: true,
+    paymentCardOnSite: true,
+    paymentOnline: true,
+    deliveryForSomeoneElse: false,
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(minsTime.isRestaurantOpenAt).mockReturnValue(true);
     menuService.getMenuByRestaurant.mockResolvedValue({ categories: [] });
+    loyaltyOrderPricing.loadForCart.mockResolvedValue({
+      settings: {
+        restaurantId,
+        flameDisplayEnabled: false,
+        flameRewardsEnabled: false,
+        flameExpireDays: 14,
+        flameLevels: [],
+      },
+      balance: null,
+    });
   });
 
   const baseDto: CreatePreOrderDto = {
@@ -517,5 +545,152 @@ describe('PreOrdersService.create validations', () => {
     ).rejects.toMatchObject({
       response: { code: 'PAYMENT_METHOD_DISABLED' },
     });
+  });
+
+  it('ignores client unitPrice, discount and total and stores the server total', async () => {
+    orderSettingsService.getByRestaurant.mockResolvedValue(openSettings);
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+    loyaltyOrderPricing.loadForCart.mockResolvedValue({
+      settings: {
+        restaurantId,
+        flameDisplayEnabled: true,
+        flameRewardsEnabled: true,
+        flameExpireDays: 14,
+        flameLevels: [
+          {
+            id: '019efb61-5d8e-7058-b838-6f2696cb4210',
+            name: 'Искра',
+            requiredVisits: 1,
+            rewards: [
+              {
+                id: '019efb61-5d8e-7058-b838-6f2696cb4211',
+                type: LoyaltyRewardType.PERCENT_DISCOUNT,
+                title: '10%',
+                description: null,
+                percentOff: 10,
+                amountOff: null,
+                menuItemId: null,
+                minOrderAmount: null,
+              },
+            ],
+          },
+        ],
+      },
+      balance: {
+        restaurantId,
+        userId: 'user',
+        visits: 2,
+        totalVisits: 2,
+        lastVisitAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    const created: Array<Record<string, unknown>> = [];
+    dataSource.transaction.mockImplementation(
+      <T>(fn: (manager: unknown) => Promise<T>) =>
+        fn({
+          query: jest.fn().mockResolvedValue([{ next: 4 }]),
+          create: jest.fn((_entity: unknown, data: Record<string, unknown>) => {
+            created.push(data);
+            return data;
+          }),
+          save: jest.fn((entity: Record<string, unknown>) =>
+            Promise.resolve({
+              ...entity,
+              id: '019efb61-5d8e-7058-b838-6f2696cb4999',
+              orderNumber: 4,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }),
+          ),
+        }),
+    );
+    preOrderItemRepository.find.mockResolvedValue([]);
+    paymentsService.startOnlineCheckout.mockResolvedValue({
+      redirectUrl: 'https://pay.example/checkout',
+    });
+
+    const result = await service.create(restaurantId, 'user', {
+      ...baseDto,
+      paymentMethod: PaymentMethod.ONLINE,
+      items: [
+        {
+          menuItemId: '019efb61-5d8e-7058-b838-6f2696cb4201',
+          quantity: 2,
+          unitPrice: 1,
+          name: 'Халява',
+        },
+      ],
+      discount: 100,
+      totalAmount: 0.01,
+      loyaltyDiscountAmount: 100,
+    } as CreatePreOrderDto);
+
+    expect(created[0]).toMatchObject({
+      subtotalAmount: 20,
+      loyaltyDiscountAmount: 2,
+      totalAmount: 18,
+      loyaltyLevelName: 'Искра',
+    });
+    expect(created[1]).toMatchObject({
+      name: 'Бургер',
+      unitPrice: 10,
+      quantity: 2,
+    });
+    expect(result.totalAmount).toBe(18);
+    expect(result.subtotalAmount).toBe(20);
+    expect(result.loyaltyDiscountAmount).toBe(2);
+    expect(paymentsService.startOnlineCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 18 }),
+    );
+  });
+
+  it('quotes a guest cart from the menu without a loyalty lookup', async () => {
+    menuService.getMenuByRestaurant.mockResolvedValue({
+      categories: [
+        {
+          items: [
+            {
+              id: '019efb61-5d8e-7058-b838-6f2696cb4201',
+              name: 'Бургер',
+              price: 10,
+              isAvailable: true,
+              modifierGroups: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    const quote = await service.quote(restaurantId, null, {
+      items: [
+        {
+          menuItemId: '019efb61-5d8e-7058-b838-6f2696cb4201',
+          quantity: 2,
+        },
+      ],
+    });
+
+    expect(loyaltyOrderPricing.loadForCart).not.toHaveBeenCalled();
+    expect(quote.subtotal).toBe(20);
+    expect(quote.total).toBe(20);
+    expect(quote.loyaltyDiscount).toBeNull();
+    expect(quote.giftRewards).toEqual([]);
+    expect(quote).not.toHaveProperty('loyaltyRewardSnapshot');
   });
 });
