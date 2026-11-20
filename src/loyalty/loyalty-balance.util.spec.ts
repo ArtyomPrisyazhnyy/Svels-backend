@@ -57,6 +57,10 @@ function balance(
     visits: 3,
     totalVisits: 3,
     lastVisitAt: new Date(NOW.getTime() - DAY_MS),
+    streakStartedAt: new Date(NOW.getTime() - 3 * DAY_MS),
+    lastVisitDay: '2026-09-30',
+    streakDays: 3,
+    longestStreak: 3,
     updatedAt: NOW,
     ...overrides,
   });
@@ -82,6 +86,10 @@ describe('buildLoyaltyBalance', () => {
         visitsLeft: 2,
       },
       availableRewards: [],
+      streakStartedAt: null,
+      streakDays: 0,
+      longestStreak: 0,
+      status: 'none',
     });
   });
 
@@ -101,6 +109,7 @@ describe('buildLoyaltyBalance', () => {
       visitsLeft: 2,
     });
     expect(result.availableRewards).toEqual([reward]);
+    expect(result.status).toBe('active');
   });
 
   it('expires the series when the last visit is older than flameExpireDays', () => {
@@ -119,6 +128,7 @@ describe('buildLoyaltyBalance', () => {
     expect(result.expiresAt).toBeNull();
     expect(result.currentLevel).toBeNull();
     expect(result.availableRewards).toEqual([]);
+    expect(result.status).toBe('none');
   });
 
   it('keeps the series when the last visit is exactly flameExpireDays old', () => {

@@ -76,6 +76,9 @@ describe('LoyaltyService', () => {
         visits: 1,
         totalVisits: 1,
         lastVisitAt: NOW,
+        streakDays: 1,
+        longestStreak: 1,
+        lastVisitDay: '2026-10-01',
       }),
     );
   });
@@ -90,6 +93,35 @@ describe('LoyaltyService', () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 
+  it('does not increment streakDays on a second visit the same Minsk day', async () => {
+    manager.findOne.mockResolvedValue(
+      Object.assign(new GuestLoyaltyBalance(), {
+        restaurantId: RESTAURANT_ID,
+        userId: USER_ID,
+        visits: 1,
+        totalVisits: 1,
+        lastVisitAt: new Date('2026-10-01T21:30:00.000Z'),
+        streakDays: 1,
+        streakStartedAt: new Date('2026-10-01T21:30:00.000Z'),
+        lastVisitDay: '2026-10-02',
+        longestStreak: 1,
+      }),
+    );
+
+    await service.recordVisit({
+      ...recordParams(),
+      now: new Date('2026-10-01T22:00:00.000Z'),
+    });
+
+    expect(manager.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visits: 2,
+        streakDays: 1,
+        lastVisitDay: '2026-10-02',
+      }),
+    );
+  });
+
   it('increments the series within the expiry window', async () => {
     manager.findOne.mockResolvedValue(
       Object.assign(new GuestLoyaltyBalance(), {
@@ -98,13 +130,24 @@ describe('LoyaltyService', () => {
         visits: 2,
         totalVisits: 4,
         lastVisitAt: new Date(NOW.getTime() - 3 * DAY_MS),
+        lastVisitDay: '2026-09-28',
+        streakDays: 2,
+        streakStartedAt: new Date(NOW.getTime() - 3 * DAY_MS),
+        longestStreak: 2,
       }),
     );
 
     await service.recordVisit(recordParams());
 
     expect(manager.save).toHaveBeenCalledWith(
-      expect.objectContaining({ visits: 3, totalVisits: 5, lastVisitAt: NOW }),
+      expect.objectContaining({
+        visits: 3,
+        totalVisits: 5,
+        lastVisitAt: NOW,
+        streakDays: 3,
+        lastVisitDay: '2026-10-01',
+        longestStreak: 3,
+      }),
     );
   });
 
@@ -116,13 +159,23 @@ describe('LoyaltyService', () => {
         visits: 3,
         totalVisits: 5,
         lastVisitAt: new Date(NOW.getTime() - 15 * DAY_MS),
+        lastVisitDay: '2026-09-15',
+        streakDays: 3,
+        longestStreak: 3,
       }),
     );
 
     await service.recordVisit(recordParams(14));
 
     expect(manager.save).toHaveBeenCalledWith(
-      expect.objectContaining({ visits: 1, totalVisits: 6, lastVisitAt: NOW }),
+      expect.objectContaining({
+        visits: 1,
+        totalVisits: 6,
+        lastVisitAt: NOW,
+        streakDays: 1,
+        longestStreak: 3,
+        lastVisitDay: '2026-10-01',
+      }),
     );
   });
 

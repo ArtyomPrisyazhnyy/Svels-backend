@@ -1,4 +1,5 @@
 import type { LoyaltyRewardConfig } from '../../loyalty-settings/loyalty-settings.types';
+import type { LoyaltyStreakStatus } from '../loyalty-streak.util';
 
 export interface LoyaltyBalanceResponseDto {
   restaurantId: string;
@@ -17,4 +18,8 @@ export interface LoyaltyBalanceResponseDto {
     visitsLeft: number;
   } | null;
   availableRewards: LoyaltyRewardConfig[];
+  streakStartedAt: string | null;
+  streakDays: number;
+  longestStreak: number;
+  status: LoyaltyStreakStatus;
 }

@@ -18,6 +18,19 @@ export class GuestLoyaltyBalance {
   @Column({ type: 'timestamptz', nullable: true })
   lastVisitAt: Date | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  streakStartedAt: Date | null;
+
+  /** Календарный день последнего визита в Europe/Minsk (YYYY-MM-DD). */
+  @Column({ type: 'date', nullable: true })
+  lastVisitDay: string | null;
+
+  @Column({ type: 'int', default: 0 })
+  streakDays: number;
+
+  @Column({ type: 'int', default: 0 })
+  longestStreak: number;
+
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }
